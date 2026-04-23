@@ -36,20 +36,36 @@ RUN apt-get update \
       python3-pip \
  && rm -rf /var/lib/apt/lists/*
 
-# --- FreeSurfer + ITK .debs from the build context (user's local builds).
-# freesurfer depends on libinsighttoolkit5 (not in Ubuntu 24.04), so we
-# install them together in one apt-get call to let apt resolve ordering.
+# --- FreeSurfer + ITK .debs from the build context.
+#
+# CRITICAL runtime-linking note: FreeSurfer binaries in the .deb link
+# libITKCommon-5.4.so.1 via libinsighttoolkit5 5.4.5. Noble's stock ITK is
+# 5.3, so if apt ever resolves to stock ITK alone we get a runtime
+# "cannot open shared object" on mri_convert/mri_synthstrip/etc. Therefore
+# we install the local libinsighttoolkit5_5.4.5-1_arm64.deb explicitly
+# alongside the freesurfer .deb, then verify the link resolves below.
+#
+# We use the 8.2.0-3 build (latest in /home/mhough/dev/debian/handoff/).
+# Byte-identical binaries to -2 per `dpkg -c`; differs only in debian/
+# metadata (control, copyright, lintian-overrides, README.Debian, watch,
+# tests). If downstream pins by sha, the hash changes but not the runtime.
+#
+# We skip freesurfer-gui (freeview, not needed headless) and
+# libinsighttoolkit5-dev (compile-time only).
 COPY libinsighttoolkit5_5.4.5-1_arm64.deb /build/
-COPY freesurfer_8.2.0-2_arm64.deb /build/
-COPY freesurfer-gui_8.2.0-2_arm64.deb /build/
+COPY freesurfer_8.2.0-3_arm64.deb /build/
 COPY freesurfer-data_8.2.0-1_all.deb /build/
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       /build/libinsighttoolkit5_5.4.5-1_arm64.deb \
-      /build/freesurfer_8.2.0-2_arm64.deb \
-      /build/freesurfer-gui_8.2.0-2_arm64.deb \
+      /build/freesurfer_8.2.0-3_arm64.deb \
       /build/freesurfer-data_8.2.0-1_all.deb \
- && rm -rf /build /var/lib/apt/lists/*
+ && rm -rf /build /var/lib/apt/lists/* \
+ && if ! ldd /usr/lib/freesurfer/bin/mri_convert | grep -q 'libITKCommon-5.4'; then \
+        echo "FATAL: mri_convert not linking libITKCommon-5.4 — wrong ITK resolved"; \
+        ldd /usr/lib/freesurfer/bin/mri_convert | grep -i itk; \
+        exit 1; \
+    fi
 
 ENV FREESURFER_HOME=/usr/lib/freesurfer
 ENV PATH="${FREESURFER_HOME}/bin:${PATH}"
