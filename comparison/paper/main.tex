@@ -1,0 +1,354 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{siunitx}
+
+\title{Is a structural-MRI foundation model worth its weight?\\
+  Ridge regression on T1Prep morphometry as a baseline on the
+  Dallas Lifespan Brain Study}
+\author{Morgan Hough \\
+  \texttt{morgan.hough@gmail.com}}
+\date{Draft --- \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The release of the MedARC \texttt{smri-fm} dataset, the publication of
+BrainIAC \citep{brainiac2026}, and the MICCAI 2025 FOMO25 and SSL3D
+challenges won by \citet{gordaliza2026} have renewed interest in
+structural-MRI foundation models (sMRI-FMs) as a general-purpose
+backbone for neuroimaging. Whether FMs provide a meaningful advance
+over classical morphometric features for core tasks --- above all,
+brain-age prediction --- has not been settled. In fact
+\citet{schulz2025} show that for \emph{disease detection}, simpler
+models beat complex ones despite losing on age MAE: ridge regression
+with 1\,400 parameters produces larger patient-vs-control effect sizes
+than a 46M-parameter CNN on the same data. We therefore construct
+a \textbf{four-rung classical morphometry ladder} on the Dallas
+Lifespan Brain Study (DLBS, \citealp{park2025dlbs}) and benchmark
+three sMRI foundation-model checkpoints against it --- BrainIAC
+\citep{brainiac2026}, the FOMO25 challenge-winning
+MultiModalUNetVAE \citep{gordaliza2026,fomo25release}, and
+AnatCL \citep{barbano2024anatcl} --- under identical bias-correction
+regimes. DLBS is, to our knowledge, the largest fully-longitudinal,
+fully-public adult lifespan T1 set, making it the natural venue to
+test the Vidal-Pi\~neiro critique \citep{vidalpineiro2021} that
+cross-sectional brain-age gap is uncorrelated with longitudinal brain
+change. We pre-register four analyses: (i) cross-sectional brain-age
+MAE per rung and per FM; (ii) patient-vs-control effect size per
+\citet{schulz2025} on a matched held-out set; (iii) longitudinal
+stability of brain-age gap across the three DLBS waves; and
+(iv) whether the FM arms meaningfully beat classical morphometry on
+any of these dimensions.
+\end{abstract}
+
+\section{Introduction}
+
+Brain-predicted age, introduced by \citet{franke2010} and popularised by
+Cole and colleagues \citep{cole2017}, has become the single
+most-reported biomarker derived from structural MRI. A decade of
+architectural progress --- from relevance-vector regression on VBM
+features, through Gaussian-process regression
+\citep{cole2017,brainager} to 3D CNNs \citep{peng2021sfcn} --- has pushed
+UK Biobank mean absolute error (MAE) from $\sim 5$ years to $\sim 2$ years
+\citep{peng2021sfcn}. At the same time, multiple authors have shown that
+classical ridge- or kernel-based regressors on FreeSurfer or CAT12
+morphometric features match deep networks within noise
+\citep{more2023,lombardi2021,bashyam2020}. The apparent ceiling is set by
+label noise and site effects, not model capacity.
+
+The sMRI-FM generation --- \citet{brainiac2026} and the
+MedARC \texttt{smri-fm} dataset
+\footnote{\url{https://huggingface.co/datasets/medarc/smri-fm}} --- trades
+architectural novelty for a different value proposition: one backbone,
+many downstream tasks. The relevant question is therefore not
+``is the FM better?'' but ``is FM + ridge better than
+T1Prep + ridge?'' under the same bias-corrected evaluation. If not, the
+FM's value lies elsewhere (low-label transfer, rare-disease
+classification) and brain-age benchmarks stop being a useful selling
+point for the foundation-model framing.
+
+\section{Background}
+
+\subsection{Brain age: origins and the classical baseline}
+
+\citet{franke2010} built the first published brain-age model on
+voxel-based morphometry (VBM) features produced by the VBM8/CAT toolbox
+--- features directly analogous to what T1Prep produces today. Their
+relevance vector regressor achieved \SI{5}{years} MAE on healthy adults,
+and set the template for a decade of VBM-plus-classical-regressor
+work. Cole's \texttt{brainageR} \citep{brainager} is the canonical
+open implementation.
+
+\subsection{The deep-learning era (2017--2022)}
+
+\citet{cole2017} demonstrated that 3D CNNs on minimally-preprocessed
+T1s match and slightly exceed VBM-plus-classical pipelines on healthy
+UK Biobank data, and produce heritable residuals. \citet{peng2021sfcn}
+formalised this with SFCN, a VGG-style 3D net trained with a
+soft-label KL-divergence loss
+\begin{equation}
+  \mathcal{L}_{\text{SFCN}}
+  = \mathrm{KL}\left(
+      \mathcal{N}(y, \sigma^2) \,\Vert\, \hat{p}(\cdot \mid x)
+    \right),
+\end{equation}
+reporting \SI{2.14}{years} MAE on held-out UK Biobank.
+\emph{The paper itself notes} that a post-hoc linear bias correction on
+the SFCN outputs maintains state-of-the-art, and that with $N \approx 50$
+training subjects deep learning barely edges out linear baselines. The
+gap has not meaningfully widened since.
+
+\subsection{The ridge counter-literature}
+
+\citet{lombardi2021} reported \SI{2.7}{years} MAE on Dominantly
+Inherited Alzheimer Network (DIAN) data using ridge regression on
+FreeSurfer features. \citet{more2023} ran one of the largest systematic
+comparisons to date and concluded that kernel-ridge and GP regressors on
+morphometric summaries generalise better across sites than 3D
+CNNs. The emerging consensus --- rarely stated that sharply in print ---
+is that \emph{the ceiling on healthy cross-sectional brain age is set by
+label and site noise, not by model capacity.}
+
+This has direct implications for the sMRI-FM value proposition:
+if the embedding head is itself a ridge regressor (as it typically
+is in frozen-backbone evaluations), its advantage over T1Prep-feature
+ridge reduces to whether the FM representation captures age-relevant
+variance that classical morphometry misses.
+
+\subsection{Regression dilution and bias correction}
+
+Every brain-age model exhibits an age-dependent residual: over-prediction
+for young subjects, under-prediction for old ones. The phenomenon is a
+mathematical consequence of minimising MSE under a noisy label
+distribution and is formally a regression-to-the-mean artefact
+\citep{smith2019, liang2019}. Three correction families dominate
+current practice:
+
+\paragraph{Cole / Smith linear correction.} Regress $\hat{y}$ on $y$,
+recover $\hat{y} = \alpha y + \beta$, and transform
+\begin{equation}
+  \hat{y}_{\text{corr}} = \frac{\hat{y} - \beta}{\alpha}.
+\end{equation}
+
+\paragraph{Beheshti correction.} Regress $\mathrm{PAD} = \hat{y} - y$
+directly on $y$ and subtract the fit.
+
+\paragraph{Age-level (Zhang) correction.} Local $z$-score within each
+chronological age bin:
+\begin{equation}
+  \mathrm{PAD}^{\text{ac}}_i
+  = \frac{\mathrm{PAD}_i - \mu_a}{\sigma_a}.
+\end{equation}
+\citet{zhang2023agelevel} show global linear corrections leave
+systematic within-age residuals.
+
+\citet{delange2022mindthegap} is the canonical cautionary review: any
+downstream association with phenotype $X$ that is itself age-dependent
+can arise purely through uncorrected regression dilution, and reporting
+uncorrected BAG is no longer defensible.
+
+\subsection{The longitudinal critique}
+
+\citet{vidalpineiro2021} deliver the most uncomfortable finding in the
+field: cross-sectional BAG is \emph{essentially uncorrelated} with the
+within-subject rate of brain change measured longitudinally. They argue
+that high BAG indexes early-life differences (birth weight, polygenic
+scores) more than ongoing neurodegeneration. The implication: a meaningful
+evaluation of any brain-age model, FM-derived or not, requires
+longitudinal data with repeat scans per subject, and should report
+longitudinal $\Delta$BAG in addition to cross-sectional MAE. DLBS ---
+three waves, up to $\sim 13$ years separation --- is well suited.
+
+\subsection{The foundation-model era (2024--2026)}
+
+BrainIAC \citep{brainiac2026} is the first published sMRI-FM with
+credible generalist claims: SimCLR pretraining on $\sim 48{,}500$ scans
+across 35 datasets, validated on seven downstream tasks including brain
+age, MCI classification, IDH mutation, and survival. Preprocessing is
+deliberately minimal: N4 bias correction, $1\,\mathrm{mm}$ isotropic
+resampling, rigid MNI registration, HD-BET skull strip, crop to
+$128^3$. Preliminary evaluation on 100 DLBS images (this project,
+2026-04-21) shows BrainIAC's predictions concentrate in a narrow
+younger band --- consistent with distribution-shift between BrainIAC's
+training corpus and the DLBS older-adult cohort.
+
+\citet{barbano2024anatcl} (AnatCL) built a weakly-contrastive SSL
+model using cortical thickness, grey-matter volume, and surface area
+per Desikan--Killiany region plus chronological age as explicit
+anatomical supervision, achieving \SI{2.61}{years} MAE on OpenBHB with
+only $3{,}984$ training subjects --- the cleanest existing argument
+that anatomical-prior-aware pretraining is data-efficient.
+
+\citet{gordaliza2026} (arxiv 2601.13166), released as the
+\texttt{MultiModalUNetVAE} (mmunetvae) checkpoint trained on
+FOMO-60K (11\,187 subjects, MAE-style SSL with $4\times 4 \times 4$
+voxel masking on $96^3$ patches), won MICCAI 2025 in both SSL3D and
+FOMO25 brain-MRI foundation-model challenges. Crucially, their
+architecture is a 3D U-Net with VAE --- 10$\times$ smaller and 1--2
+orders of magnitude faster to train than transformer-based
+competitors. This is the strongest empirical argument to date that
+3D U-Net MAE is at least as effective as 3D ViT MAE for brain MRI,
+and reframes the sMRI-FM architecture-choice debate.
+
+The MedARC \texttt{smri-fm} dataset
+\footnote{\url{https://huggingface.co/datasets/medarc/smri-fm}} is a
+community re-implementation in this lineage currently under active
+development; the group's prior cortex-MAE on fMRI flat maps
+\citep{medarcsmrifm2026} strongly suggests MAE (not SimCLR) will be
+their pretraining objective of choice.
+
+Three questions the published literature has not yet answered:
+\begin{enumerate}
+  \item Does FM + ridge beat morphometry + ridge on brain age, under
+        identical bias correction?
+  \item Does FM-derived BAG pass the Vidal-Pi\~neiro longitudinal
+        stability test, or does it inherit the same disconnect between
+        cross-sectional and longitudinal signals?
+  \item Per \citet{schulz2025}, does the FM's accuracy-vs-effect-size
+        trade-off favour it over a simple ridge on classical
+        morphometric features for clinically-relevant phenotype
+        detection?
+\end{enumerate}
+
+\section{Methods (pre-registration)}
+
+\subsection{Data}
+
+We use the Dallas Lifespan Brain Study \citep{park2025dlbs}, OpenNeuro
+\texttt{ds004856}, with 464 / 338 / 224 subjects across waves 1/2/3
+(total $\sim 1000$ T1 sessions, Philips 3T Achieva, $\sim 4$--$5$ year
+intervals). Ages span \numrange{20}{90} years at wave 1. Second
+held-out: ds003592 \citep{spreng2022}, Spreng et al.\ neurocognitive
+aging, for external generalisation. Both downloaded in full from
+OpenNeuro S3 on 2026-04-22.
+
+\subsection{Preprocessing arms and four morphometry rungs}
+
+For each subject we produce four independent classical feature sets
+(rungs) and three foundation-model embeddings. All pipelines consume
+the same raw DLBS T1 (FLAIR where required). For reproducibility each
+pipeline runs inside a pinned Docker image; builds and digests are
+recorded in \texttt{comparison/containers/IMAGE\_DIGESTS.md}.
+
+\paragraph{Rung 1 --- SynthSeg volumes (MedARC baseline).}
+The MedARC \texttt{preprocessing/pipeline.py} as of commit
+\texttt{fbdb1a83}: SynthStrip brain extraction, ANTs rigid
+registration to \texttt{MNI152NLin2009cAsym} at \SI{1}{mm} isotropic,
+\texttt{mri\_synthseg --parc --robust}. Produces 33 whole-brain
+regions + 34$\times$2 Desikan--Killiany cortical regions + the
+Bethlehem five summary metrics GMV/WMV/sGMV/VentCSF/TCV
+\citep{bethlehem2022}. Following Nima's 2026-04-21 Discord report we
+aggregate to a 71-feature ICV-normalised vector.
+
+\paragraph{Rung 2 --- SynthSeg + N4.} Same as rung 1 but with N4 bias
+correction via SimpleITK applied before SynthSeg. Tests Connor's
+2026-04-13 proposal empirically and settles whether adding a classical
+bias-corrector upstream of a bias-robust network helps, hurts, or
+ties.
+
+\paragraph{Rung 3 --- FastSurfer VINN.} Replaces SynthSeg with
+FastSurfer's \texttt{aparc.DKTatlas+aseg.deep} VINN segmentation
+together with CerebNet (fine cerebellar parcellation) and HypVINN
+(hypothalamic subregions). Same ICV normalisation. Isolates the
+effect of seg-network quality from bias handling.
+
+\paragraph{Rung 4 --- T1Prep thickness + Jacobian.} T1Prep v0.3.3
+(DeepMriPrep + AMAP + CAT-Surface). Extracts (i) AMAP-derived
+GM/WM/CSF tissue probability maps warped to MNI152 via Geodesic
+Shooting, (ii) cortical thickness per Desikan--Killiany ROI from the
+CAT-Surface pial/white reconstruction, (iii) log-Jacobian summary of
+the nonlinear warp per coarse parcellation, (iv) total intracranial
+volume. Adds the two feature axes (thickness, Jacobian) that volumetric
+segmentation cannot capture.
+
+\subsection{Models}
+
+For each of the four morphometry rungs we fit a ridge regressor with
+leave-one-site-out cross-validation (DLBS has one site, so 5-fold CV
+within site and external validation on ds003592). For each of the
+three FM arms we extract embeddings on MedARC-pipeline-preprocessed
+input and fit a ridge head on the embedding:
+
+\begin{itemize}
+  \item \textbf{Ridge / kernel-ridge} per rung.
+  \item \textbf{Gaussian Process} with Mat\'ern-3/2 kernel (rungs 1--4)
+        as a second classical reference.
+  \item \textbf{FM + ridge:} BrainIAC \citep{brainiac2026},
+        FOMO25 mmunetvae \citep{gordaliza2026}, AnatCL
+        \citep{barbano2024anatcl}.
+  \item \textbf{Fine-tuned SFCN} \citep{peng2021sfcn} as the
+        supervised deep-learning reference.
+\end{itemize}
+
+All models trained on wave-1 DLBS ($N \approx 464$) with 5-fold CV;
+wave-2 and wave-3 held out for longitudinal analysis, ds003592 held
+out for external-site generalisation.
+
+\subsection{Bias correction}
+
+For every model we report MAE under four regimes: raw, Cole/Smith,
+Beheshti, and Zhang age-level. Downstream associations use the
+\citet{smith2019} covariate approach ($y + y^2$) in addition to
+corrected BAG.
+
+\subsection{Longitudinal evaluation}
+
+For each returning subject we compute $\Delta\mathrm{BAG}_{i,t}$
+between waves and test (a) within-subject stability (test-retest ICC
+across waves, after age correction) and (b) correlation with change in
+T1Prep-derived morphometric summaries (cortical thickness, ventricle
+volume). This is the Vidal-Pi\~neiro test applied to FM outputs for the
+first time.
+
+\section{Expected outcomes}
+
+We pre-register four specific hypotheses:
+
+\begin{enumerate}
+  \item \emph{Cross-sectional ceiling.} FM + ridge and
+        rung-4 (T1Prep thickness + Jacobian) + ridge will match
+        within \SI{0.3}{years} MAE on wave 1 held-out subjects.
+        Preliminary evidence: Nima's rung-1 ridge baseline on 100
+        DLBS achieves MAE $= \SI{6.66}{years}$ uncorrected;
+        \citet{lombardi2021} report \SI{2.7}{years} with a better
+        feature set --- both below BrainIAC's preliminary DLBS
+        behaviour, which underpredicts by design on elderly cohorts.
+  \item \emph{Bias persistence.} The regression-dilution slope
+        $\alpha$ before correction will be statistically
+        indistinguishable across preprocessing arms and across
+        FM arms, confirming the bias originates in the label
+        distribution and is not representation-specific.
+  \item \emph{Longitudinal disconnect.} Following
+        \citet{vidalpineiro2021}, within-subject $\Delta\mathrm{BAG}$
+        will correlate weakly ($|r| < 0.2$) with within-subject
+        longitudinal morphometric change, for FM \emph{and} each
+        morphometry rung.
+  \item \emph{Disease-effect-size inversion.} Following
+        \citet{schulz2025}, we expect rungs 1--4 ridge regressors to
+        have \emph{higher} patient-vs-control effect size than any
+        FM + ridge head on an AD-spectrum labelling of DLBS, despite
+        losing on age MAE. This is the paper's core claim: for the
+        clinically interesting outcome, the FM is a regression.
+\end{enumerate}
+
+A fifth, exploratory question: does T1Prep's nonlinear MNI warp and
+cortical-surface output, if fed to the FM as an alternative input,
+change the FM's longitudinal or disease-effect-size behaviour?
+
+\section{Discussion (placeholder)}
+
+To be written after results. The paper's contribution is not a new
+model but an apples-to-apples evaluation that pins down where the
+sMRI-FM proposition is and is not load-bearing.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
