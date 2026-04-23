@@ -39,7 +39,7 @@ every number and figure below updates as the experiment parquets land.
 
 
 
-\textbf{Current snapshot:} 6 subjects, 18 sessions processed by FastSurfer VINN; 5 subjects, 15 sessions by T1Prep (CAT-Surface).
+\textbf{Current snapshot:} 8 subjects, 24 sessions processed by FastSurfer VINN; 8 subjects, 24 sessions by T1Prep (CAT-Surface).
 
 \end{abstract}
 
@@ -155,8 +155,8 @@ sMRI-FM.
 \toprule
 Tool & Subjects & Sessions & Feature rows \\
 \midrule
-FastSurfer VINN & 6 & 18 & 2940 \\
-T1Prep & 5 & 15 & 2004 \\
+FastSurfer VINN & 8 & 24 & 3960 \\
+T1Prep & 8 & 24 & 2976 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -181,14 +181,14 @@ T1Prep & 5 & 15 & 2004 \\
 \toprule
 Arm \& correction & n scans & MAE (yr) & RMSE & $R^2$ & Pearson $r$ \\
 \midrule
-FastSurfer VINN (rung 3) / raw & 18 & 9.94 & 11.77 & 0.67 & 0.82 \\
-FastSurfer VINN (rung 3) / cole & 18 & 11.69 & 14.11 & 0.53 & 0.82 \\
-FastSurfer VINN (rung 3) / beheshti & 18 & 8.55 & 10.33 & 0.75 & 0.89 \\
-FastSurfer VINN (rung 3) / zhang & 18 & 9.94 & 11.07 & 0.71 & 0.85 \\
-T1Prep thickness (rung 4) / raw & 15 & 11.91 & 12.41 & 0.68 & 0.84 \\
-T1Prep thickness (rung 4) / cole & 15 & 11.75 & 14.30 & 0.57 & 0.84 \\
-T1Prep thickness (rung 4) / beheshti & 15 & 7.88 & 9.59 & 0.81 & 0.92 \\
-T1Prep thickness (rung 4) / zhang & 15 & 11.91 & 12.40 & 0.68 & 0.84 \\
+FastSurfer VINN (rung 3) / raw & 24 & 14.77 & 18.26 & 0.28 & 0.55 \\
+FastSurfer VINN (rung 3) / cole & 24 & 29.42 & 32.98 & -1.36 & 0.55 \\
+FastSurfer VINN (rung 3) / beheshti & 24 & 10.93 & 12.25 & 0.67 & 0.87 \\
+FastSurfer VINN (rung 3) / zhang & 24 & 7.34 & 9.84 & 0.79 & 0.90 \\
+T1Prep thickness (rung 4) / raw & 23 & 12.80 & 15.04 & 0.51 & 0.73 \\
+T1Prep thickness (rung 4) / cole & 23 & 17.01 & 19.85 & 0.15 & 0.73 \\
+T1Prep thickness (rung 4) / beheshti & 23 & 10.88 & 12.69 & 0.65 & 0.86 \\
+T1Prep thickness (rung 4) / zhang & 23 & 11.03 & 12.59 & 0.66 & 0.85 \\
 \bottomrule
 \end{tabular}
 \end{center}

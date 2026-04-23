@@ -61,9 +61,9 @@ RUN apt-get update \
       /build/freesurfer_8.2.0-3_arm64.deb \
       /build/freesurfer-data_8.2.0-1_all.deb \
  && rm -rf /build /var/lib/apt/lists/* \
- && if ! ldd /usr/lib/freesurfer/bin/mri_convert | grep -q 'libITKCommon-5.4'; then \
-        echo "FATAL: mri_convert not linking libITKCommon-5.4 — wrong ITK resolved"; \
-        ldd /usr/lib/freesurfer/bin/mri_convert | grep -i itk; \
+ && if ! ldd /usr/lib/freesurfer/bin/mri_convert | grep -qE 'libitk[a-z0-9_]+-5\.4\.so'; then \
+        echo "FATAL: mri_convert not linking any ITK 5.4 — wrong ITK resolved"; \
+        ldd /usr/lib/freesurfer/bin/mri_convert | grep -iE 'itk|vnl' | head -10; \
         exit 1; \
     fi
 
@@ -79,11 +79,18 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages \
       tf-keras \
       surfa voxelmorph neurite
 
-# The MGH pip package `synthstrip` ships the CLI wrapper; pin and install.
-# For SynthSeg we shim in our own CLI (see /build/synth_cli.py) that loads
-# the .h5 weights from $FREESURFER_HOME/models directly.
-RUN python3 -m pip install --no-cache-dir --break-system-packages \
-      synthstrip
+# NOTE on mri_synthstrip / mri_synthseg CLI wrappers:
+# The .deb ships the model weights under /usr/lib/freesurfer/models/ but
+# NOT the Python CLI entry-points (fspython was stripped — see patch
+# 0006-use-system-python3). MedARC's preprocessing/pipeline.py invokes
+# `mri_synthstrip` and `/opt/venv/bin/python .../mri_synthseg` by path.
+# In this image those calls fail until the neurodebian agent ships the
+# freesurfer-python sub-package (design doc at
+# /home/mhough/dev/debian/freesurfer/FREESURFER_PYTHON_DESIGN.md).
+#
+# For a demo build, the surfa/voxelmorph/neurite/tf-keras stack above
+# is what those CLIs would run on top of; they can be called directly
+# once freesurfer-python lands.
 
 # --- MedARC pipeline source, pinned.
 RUN git clone https://github.com/MedARC-AI/smri-fm.git /app/smri-fm \

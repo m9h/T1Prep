@@ -1,26 +1,27 @@
-# Build main.pdf from main.pnw via Pweave.
+# Build main.pdf from main.pnw via Pweave + tectonic.
 #
-# main.pnw → (pweave) → main.tex → (pdflatex) → main.pdf
+# main.pnw → (pweave) → main.tex → (tectonic) → main.pdf
 #
-# Figures and tables are generated from the current feature parquets.
-# Edit main.pnw, then `make` to re-weave + re-render.
+# Tectonic bundles TeX Live and handles bibtex + multi-pass builds
+# automatically. Single-binary install (no apt texlive).
 
-PWEAVE ?= pweave
-PDFLATEX ?= pdflatex
-BIBTEX ?= bibtex
+PWEAVE   ?= pweave
+TECTONIC ?= $(shell command -v tectonic || echo ~/.local/bin/tectonic)
 
 main.pdf: main.tex refs.bib
-	$(PDFLATEX) -interaction=nonstopmode main.tex >/dev/null
-	$(BIBTEX) main
-	$(PDFLATEX) -interaction=nonstopmode main.tex >/dev/null
-	$(PDFLATEX) -interaction=nonstopmode main.tex >/dev/null
+	$(TECTONIC) main.tex
 
-main.tex: main.pnw
+main.tex: main.pnw paper_helpers.py
 	$(PWEAVE) -f tex main.pnw
 
 clean:
 	rm -f main.tex main.aux main.bbl main.blg main.log main.out main.toc \
-	      main.fls main.fdb_latexmk main.synctex.gz \
+	      main.fls main.fdb_latexmk main.synctex.gz main.pdf \
 	      figures/*.pdf figures/*.png
 
-.PHONY: clean
+watch:
+	while inotifywait -e modify main.pnw paper_helpers.py refs.bib 2>/dev/null; do \
+	    $(MAKE) main.pdf; \
+	done
+
+.PHONY: clean watch
