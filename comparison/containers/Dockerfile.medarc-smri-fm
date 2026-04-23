@@ -55,11 +55,13 @@ RUN apt-get update \
 COPY libinsighttoolkit5_5.4.5-1_arm64.deb /build/
 COPY freesurfer_8.2.0-3_arm64.deb /build/
 COPY freesurfer-data_8.2.0-1_all.deb /build/
+COPY freesurfer-python_8.2.0-1_all.deb /build/
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       /build/libinsighttoolkit5_5.4.5-1_arm64.deb \
       /build/freesurfer_8.2.0-3_arm64.deb \
       /build/freesurfer-data_8.2.0-1_all.deb \
+      /build/freesurfer-python_8.2.0-1_all.deb \
  && rm -rf /build /var/lib/apt/lists/* \
  && if ! ldd /usr/lib/freesurfer/bin/mri_convert | grep -qE 'libitk[a-z0-9_]+-5\.4\.so'; then \
         echo "FATAL: mri_convert not linking any ITK 5.4 — wrong ITK resolved"; \
@@ -68,7 +70,12 @@ RUN apt-get update \
     fi
 
 ENV FREESURFER_HOME=/usr/lib/freesurfer
-ENV PATH="${FREESURFER_HOME}/bin:${PATH}"
+# freesurfer-python's wrappers look up $FSENV/bin/python3. We pip-install
+# surfa/voxelmorph/neurite into the NGC base Python at /usr, so pointing
+# FSENV there makes the wrappers find the right interpreter without a
+# separate venv — no `fs-setup-python-env` needed in this image.
+ENV FSENV=/usr
+ENV PATH="${FREESURFER_HOME}/bin:/usr/lib/freesurfer-python/bin:${PATH}"
 # SUBJECTS_DIR is per-run; set at docker run time.
 
 # --- MedARC's python deps (surfa/voxelmorph/neurite for synthstrip+synthseg,
@@ -79,18 +86,16 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages \
       tf-keras \
       surfa voxelmorph neurite
 
-# NOTE on mri_synthstrip / mri_synthseg CLI wrappers:
-# The .deb ships the model weights under /usr/lib/freesurfer/models/ but
-# NOT the Python CLI entry-points (fspython was stripped — see patch
-# 0006-use-system-python3). MedARC's preprocessing/pipeline.py invokes
-# `mri_synthstrip` and `/opt/venv/bin/python .../mri_synthseg` by path.
-# In this image those calls fail until the neurodebian agent ships the
-# freesurfer-python sub-package (design doc at
-# /home/mhough/dev/debian/freesurfer/FREESURFER_PYTHON_DESIGN.md).
+# mri_synthstrip / mri_synthseg / mri_easyreg / mri_synthsr / mri_WMHsynthseg
+# are provided by freesurfer-python_8.2.0-1_all.deb (installed above).
+# Their wrappers at /usr/lib/freesurfer-python/bin resolve $FSENV/bin/python3
+# (set to /usr above) and shell out to the shipped Python scripts. Model
+# weights ship inside the .deb under /usr/lib/freesurfer-python/python-packages.
 #
-# For a demo build, the surfa/voxelmorph/neurite/tf-keras stack above
-# is what those CLIs would run on top of; they can be called directly
-# once freesurfer-python lands.
+# Sanity-check the CLIs resolve:
+RUN which mri_synthstrip mri_synthseg && \
+    mri_synthstrip --help >/dev/null 2>&1 && \
+    echo "mri_synthstrip + mri_synthseg wrappers OK"
 
 # --- MedARC pipeline source, pinned.
 RUN git clone https://github.com/MedARC-AI/smri-fm.git /app/smri-fm \
