@@ -37,10 +37,25 @@ foundation-model checkpoints against it under identical
 bias-correction regimes. This manuscript is generated with Pweave so
 every number and figure below updates as the experiment parquets land.
 
-
-
-\textbf{Current snapshot:} 6 subjects, 18 sessions processed by FastSurfer VINN; 5 subjects, 15 sessions by T1Prep (CAT-Surface).
-
+<<abstract_stats, echo=False, results='tex'>>=
+import sys; sys.path.insert(0, r'/home/mhough/dev/T1Prep/comparison/paper')
+from paper_helpers import load_all
+d = load_all()
+fs, t1p = d['fs'], d['t1p']
+if not fs.empty:
+    n_sub = fs['subject'].nunique()
+    n_ses = int(fs.groupby('subject')['session'].nunique().sum())
+    msg = rf"\textbf{{Current snapshot:}} {n_sub} subjects, {n_ses} sessions processed by FastSurfer VINN"
+    if not t1p.empty:
+        n_sub_t = t1p['subject'].nunique()
+        n_ses_t = int(t1p.groupby('subject')['session'].nunique().sum())
+        msg += rf"; {n_sub_t} subjects, {n_ses_t} sessions by T1Prep (CAT-Surface)."
+    else:
+        msg += r"; T1Prep outputs not yet populated."
+    print(msg)
+else:
+    print(r"\textbf{Current snapshot:} feature parquets not yet populated; paper re-weaves once batch lands.")
+@
 \end{abstract}
 
 \section{Introduction}
@@ -109,21 +124,24 @@ on NVIDIA Grace-Blackwell arm64 hosts.
 
 \subsection{Foundation-model arms}
 
-
-
-\begin{center}
-\begin{tabular}{lll}
-\toprule
-Arm & Design & Reference \\
-\midrule
-BrainIAC & SimCLR ViT, 32k pretraining scans & \citep{brainiac2026} \\
-FOMO25 mmunetvae & 3D U-Net MAE, 11\,187 FOMO-60K scans & \citep{gordaliza2026} \\
-AnatCL & anatomy-supervised contrastive, OpenBHB 3\,984 & \citep{barbano2024anatcl} \\
-MedARC smri-fm & TBD; reported when release lands & \citep{medarcsmrifm2026} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
+<<fm_arms, echo=False, results='tex'>>=
+rows = [
+    ("BrainIAC", "SimCLR ViT, 32k pretraining scans", r"\citep{brainiac2026}"),
+    ("FOMO25 mmunetvae", "3D U-Net MAE, 11\\,187 FOMO-60K scans", r"\citep{gordaliza2026}"),
+    ("AnatCL", "anatomy-supervised contrastive, OpenBHB 3\\,984", r"\citep{barbano2024anatcl}"),
+    ("MedARC smri-fm", "TBD; reported when release lands", r"\citep{medarcsmrifm2026}"),
+]
+print(r"\begin{center}")
+print(r"\begin{tabular}{lll}")
+print(r"\toprule")
+print(r"Arm & Design & Reference \\")
+print(r"\midrule")
+for a, b, c in rows:
+    print(f"{a} & {b} & {c} \\\\")
+print(r"\bottomrule")
+print(r"\end{tabular}")
+print(r"\end{center}")
+@
 
 \subsection{Bias correction}
 
@@ -148,51 +166,90 @@ sMRI-FM.
 
 \subsection{Dataset coverage}
 
-
-
-\begin{center}
-\begin{tabular}{lrrr}
-\toprule
-Tool & Subjects & Sessions & Feature rows \\
-\midrule
-FastSurfer VINN & 6 & 18 & 2940 \\
-T1Prep & 5 & 15 & 2004 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
+<<coverage, echo=False, results='tex'>>=
+import sys; sys.path.insert(0, r'/home/mhough/dev/T1Prep/comparison/paper')
+from paper_helpers import load_all
+d = load_all()
+fs, t1p = d['fs'], d['t1p']
+if fs.empty and t1p.empty:
+    print(r"\emph{Feature parquets not yet populated. This table re-renders when the batch completes.}")
+else:
+    print(r"\begin{center}")
+    print(r"\begin{tabular}{lrrr}")
+    print(r"\toprule")
+    print(r"Tool & Subjects & Sessions & Feature rows \\")
+    print(r"\midrule")
+    for name, df in [('FastSurfer VINN', fs), ('T1Prep', t1p)]:
+        if df.empty:
+            print(f"{name} & --- & --- & --- \\\\")
+        else:
+            n_sub = df['subject'].nunique()
+            n_ses = int(df.groupby('subject')['session'].nunique().sum())
+            print(f"{name} & {n_sub} & {n_ses} & {len(df)} \\\\")
+    print(r"\bottomrule")
+    print(r"\end{tabular}")
+    print(r"\end{center}")
+@
 
 \subsection{FastSurfer--T1Prep concordance on sub-1003}
 
-
-\begin{figure}[htpb]
-\center
-\caption{DK ROI volume (FastSurfer VINN) vs cortical thickness (T1Prep CAT-Surface) for DLBS sub-1003 across three waves.}
-\label{fig:concordance_fig}
-\end{figure}
-
+<<concordance_fig, echo=False, results='hidden', fig=True, width='0.9\\linewidth', caption='DK ROI volume (FastSurfer VINN) vs cortical thickness (T1Prep CAT-Surface) for DLBS sub-1003 across three waves.'>>=
+import sys; sys.path.insert(0, r'/home/mhough/dev/T1Prep/comparison/paper')
+from paper_helpers import load_all
+import matplotlib.pyplot as plt
+d = load_all()
+fs, t1p = d['fs'], d['t1p']
+fig, ax = plt.subplots(figsize=(6.5, 4.5))
+if fs.empty or t1p.empty:
+    ax.text(0.5, 0.5, 'data pending', ha='center', va='center', transform=ax.transAxes)
+    ax.axis('off')
+else:
+    SUBJECT = 'sub-1003'
+    fs_sub = fs[(fs['subject'] == SUBJECT) & (fs['tool'] == 'aseg+DKT.VINN')]
+    t1_sub = t1p[(t1p['subject'] == SUBJECT) & (t1p['tool'] == 't1prep_thickness')]
+    for w, m in zip(sorted(fs_sub['session'].unique()), ['o', 's', '^']):
+        fs_w = fs_sub[fs_sub['session'] == w].set_index('region')['volume_mm3']
+        t1_w = t1_sub[t1_sub['session'] == w].set_index('region')['thickness_mm']
+        common = sorted(set(fs_w.index) & set(t1_w.index))
+        if common:
+            ax.scatter([fs_w[r] for r in common], [t1_w[r] for r in common],
+                       alpha=0.6, marker=m, label=w)
+    ax.set_xlabel('FastSurfer DK ROI volume (mm$^3$)')
+    ax.set_ylabel('T1Prep DK ROI mean thickness (mm)')
+    ax.legend()
+    fig.tight_layout()
+@
 
 \subsection{Ridge brain-age baseline (current parquet)}
 
-
-
-\begin{center}
-\begin{tabular}{lrrrrr}
-\toprule
-Arm \& correction & n scans & MAE (yr) & RMSE & $R^2$ & Pearson $r$ \\
-\midrule
-FastSurfer VINN (rung 3) / raw & 18 & 9.94 & 11.77 & 0.67 & 0.82 \\
-FastSurfer VINN (rung 3) / cole & 18 & 11.69 & 14.11 & 0.53 & 0.82 \\
-FastSurfer VINN (rung 3) / beheshti & 18 & 8.55 & 10.33 & 0.75 & 0.89 \\
-FastSurfer VINN (rung 3) / zhang & 18 & 9.94 & 11.07 & 0.71 & 0.85 \\
-T1Prep thickness (rung 4) / raw & 15 & 11.91 & 12.41 & 0.68 & 0.84 \\
-T1Prep thickness (rung 4) / cole & 15 & 11.75 & 14.30 & 0.57 & 0.84 \\
-T1Prep thickness (rung 4) / beheshti & 15 & 7.88 & 9.59 & 0.81 & 0.92 \\
-T1Prep thickness (rung 4) / zhang & 15 & 11.91 & 12.40 & 0.68 & 0.84 \\
-\bottomrule
-\end{tabular}
-\end{center}
-
+<<ridge_table, echo=False, results='tex'>>=
+import sys; sys.path.insert(0, r'/home/mhough/dev/T1Prep/comparison/paper')
+from paper_helpers import load_all, fmt
+d = load_all()
+ridge_fs, ridge_t1p = d['ridge_fs'], d['ridge_t1p']
+if not (ridge_fs or ridge_t1p):
+    print(r"\emph{Ridge results not yet computed — overnight batch pending.}")
+else:
+    print(r"\begin{center}")
+    print(r"\begin{tabular}{lrrrrr}")
+    print(r"\toprule")
+    print(r"Arm \& correction & n scans & MAE (yr) & RMSE & $R^2$ & Pearson $r$ \\")
+    print(r"\midrule")
+    for name, results in [('FastSurfer VINN (rung 3)', ridge_fs),
+                           ('T1Prep thickness (rung 4)', ridge_t1p)]:
+        if not results:
+            continue
+        for scheme in ('raw', 'cole', 'beheshti', 'zhang'):
+            s = results.get(scheme, {})
+            if not s:
+                continue
+            print(f"{name} / {scheme} & {s.get('n', '---')} & "
+                  f"{fmt(s.get('mae'))} & {fmt(s.get('rmse'))} & "
+                  f"{fmt(s.get('r2'))} & {fmt(s.get('pearson_r'))} \\\\")
+    print(r"\bottomrule")
+    print(r"\end{tabular}")
+    print(r"\end{center}")
+@
 
 \section{Infrastructure contributions}
 
