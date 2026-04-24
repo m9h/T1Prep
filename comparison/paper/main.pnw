@@ -226,11 +226,25 @@ else:
 import sys; sys.path.insert(0, r'/home/mhough/dev/T1Prep/comparison/paper')
 from paper_helpers import load_all, fmt
 d = load_all()
-ridge_fs, ridge_t1p = d['ridge_fs'], d['ridge_t1p']
-ridge_brainiac, ridge_cat, ridge_cat3 = (
-    d['ridge_brainiac'], d['ridge_concat'], d['ridge_concat3']
-)
-if not (ridge_fs or ridge_t1p):
+# MedARC smri-fm protocol: RidgeCV + StandardScaler, GroupKFold(n=5)
+# by subject — matches experiments/synthseg_ridge_baseline/run_ridge.py.
+# Bias corrections (Cole, Beheshti, Zhang) are reported in addition to
+# raw MAE; MedARC reports raw by default.
+rows = [
+    ('FS aseg+DKT volumes, TIV-norm (rung 3)', d['ridge_fs_icv']),
+    ('FS aseg+DKT volumes, raw',               d['ridge_fs']),
+    ('SynthSeg volumes (MedARC pipeline)',     d['ridge_synthseg']),
+    ('FS + T1Prep-thickness concat',           d['ridge_concat']),
+    ('T1Prep tissue (CSF/GM/WM), TIV-norm',    d['ridge_t1p_tissue']),
+    ('T1Prep thickness (rung 4)',              d['ridge_t1p']),
+    ('T1Prep thickness+area concat',           d['ridge_t1p_thkarea']),
+    ('T1Prep area alone',                      d['ridge_t1p_area']),
+    ('FS + T1Prep-all concat',                 d['ridge_concat_all']),
+    ('BrainIAC 768-d (FM)',                    d['ridge_brainiac']),
+    ('FS + T1Prep + BrainIAC concat',          d['ridge_concat3']),
+]
+have_any = any(r for _, r in rows)
+if not have_any:
     print(r"\emph{Ridge results not yet computed — overnight batch pending.}")
 else:
     print(r"\begin{center}")
@@ -238,13 +252,6 @@ else:
     print(r"\toprule")
     print(r"Arm \& correction & n scans & MAE (yr) & RMSE & $R^2$ & Pearson $r$ \\")
     print(r"\midrule")
-    rows = [
-        ('FastSurfer VINN (rung 3)',   ridge_fs),
-        ('T1Prep thickness (rung 4)',  ridge_t1p),
-        ('BrainIAC 768-d (FM)',        ridge_brainiac),
-        ('FS+T1Prep concat',           ridge_cat),
-        ('FS+T1Prep+BrainIAC concat',  ridge_cat3),
-    ]
     for name, results in rows:
         if not results:
             continue

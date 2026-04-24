@@ -31,14 +31,21 @@ def read_json_or_empty(name: str) -> dict:
 
 def load_all():
     return {
-        "fs":             read_parquet_or_empty('fastsurfer_features.parquet'),
-        "t1p":            read_parquet_or_empty('t1prep_features.parquet'),
-        "brainiac":       read_parquet_or_empty('brainiac_embeddings.parquet'),
-        "ridge_fs":       read_json_or_empty('ridge_fs_asegdkt.json'),
-        "ridge_t1p":      read_json_or_empty('ridge_t1prep_thickness.json'),
-        "ridge_brainiac": read_json_or_empty('ridge_brainiac_embed.json'),
-        "ridge_concat":   read_json_or_empty('ridge_concat_fs_t1prep.json'),
-        "ridge_concat3":  read_json_or_empty('ridge_concat_fs_t1prep_brainiac.json'),
+        "fs":                read_parquet_or_empty('fastsurfer_features.parquet'),
+        "t1p":               read_parquet_or_empty('t1prep_features.parquet'),
+        "brainiac":          read_parquet_or_empty('brainiac_embeddings.parquet'),
+        "synthseg":          read_parquet_or_empty('synthseg_features.parquet'),
+        "ridge_fs":          read_json_or_empty('ridge_fs_asegdkt.json'),
+        "ridge_fs_icv":      read_json_or_empty('ridge_fs_asegdkt_icv.json'),
+        "ridge_t1p":         read_json_or_empty('ridge_t1prep_thickness.json'),
+        "ridge_t1p_tissue":  read_json_or_empty('ridge_t1prep_tissue_icv.json'),
+        "ridge_t1p_area":    read_json_or_empty('ridge_t1prep_area.json'),
+        "ridge_t1p_thkarea": read_json_or_empty('ridge_t1prep_thkarea.json'),
+        "ridge_brainiac":    read_json_or_empty('ridge_brainiac_embed.json'),
+        "ridge_synthseg":    read_json_or_empty('ridge_synthseg.json'),
+        "ridge_concat":      read_json_or_empty('ridge_concat_fs_t1prep.json'),
+        "ridge_concat_all":  read_json_or_empty('ridge_fs_t1prep_all.json'),
+        "ridge_concat3":     read_json_or_empty('ridge_concat_fs_t1prep_brainiac.json'),
     }
 
 

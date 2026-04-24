@@ -155,8 +155,8 @@ sMRI-FM.
 \toprule
 Tool & Subjects & Sessions & Feature rows \\
 \midrule
-FastSurfer VINN & 23 & 60 & 9900 \\
-T1Prep & 23 & 60 & 7934 \\
+FastSurfer VINN & 23 & 60 & 10020 \\
+T1Prep & 23 & 60 & 8114 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -181,26 +181,46 @@ T1Prep & 23 & 60 & 7934 \\
 \toprule
 Arm \& correction & n scans & MAE (yr) & RMSE & $R^2$ & Pearson $r$ \\
 \midrule
-FastSurfer VINN (rung 3) / raw & 60 & 6.61 & 8.35 & 0.82 & 0.91 \\
-FastSurfer VINN (rung 3) / cole & 60 & 7.60 & 9.19 & 0.79 & 0.91 \\
-FastSurfer VINN (rung 3) / beheshti & 60 & 6.16 & 7.45 & 0.86 & 0.94 \\
-FastSurfer VINN (rung 3) / zhang & 60 & 5.25 & 6.83 & 0.88 & 0.95 \\
-T1Prep thickness (rung 4) / raw & 60 & 9.23 & 11.63 & 0.66 & 0.82 \\
-T1Prep thickness (rung 4) / cole & 60 & 10.73 & 13.68 & 0.52 & 0.82 \\
-T1Prep thickness (rung 4) / beheshti & 60 & 8.27 & 10.54 & 0.72 & 0.88 \\
-T1Prep thickness (rung 4) / zhang & 60 & 7.98 & 10.27 & 0.73 & 0.88 \\
-BrainIAC 768-d (FM) / raw & 60 & 14.44 & 17.01 & 0.27 & 0.55 \\
-BrainIAC 768-d (FM) / cole & 60 & 24.79 & 29.97 & -1.28 & 0.55 \\
-BrainIAC 768-d (FM) / beheshti & 60 & 10.27 & 12.41 & 0.61 & 0.85 \\
-BrainIAC 768-d (FM) / zhang & 60 & 9.61 & 11.95 & 0.64 & 0.85 \\
-FS+T1Prep concat / raw & 60 & 6.57 & 8.04 & 0.84 & 0.91 \\
-FS+T1Prep concat / cole & 60 & 7.46 & 8.78 & 0.80 & 0.91 \\
-FS+T1Prep concat / beheshti & 60 & 6.16 & 7.26 & 0.87 & 0.94 \\
-FS+T1Prep concat / zhang & 60 & 6.17 & 7.24 & 0.87 & 0.94 \\
-FS+T1Prep+BrainIAC concat / raw & 60 & 7.40 & 8.83 & 0.80 & 0.90 \\
-FS+T1Prep+BrainIAC concat / cole & 60 & 7.96 & 9.84 & 0.75 & 0.90 \\
-FS+T1Prep+BrainIAC concat / beheshti & 60 & 6.53 & 8.08 & 0.83 & 0.93 \\
-FS+T1Prep+BrainIAC concat / zhang & 60 & 6.60 & 8.10 & 0.83 & 0.92 \\
+FS aseg+DKT volumes, TIV-norm (rung 3) / raw & 60 & 7.53 & 9.50 & 0.77 & 0.88 \\
+FS aseg+DKT volumes, TIV-norm (rung 3) / cole & 60 & 8.34 & 10.68 & 0.71 & 0.88 \\
+FS aseg+DKT volumes, TIV-norm (rung 3) / beheshti & 60 & 6.79 & 8.70 & 0.81 & 0.92 \\
+FS aseg+DKT volumes, TIV-norm (rung 3) / zhang & 60 & 5.48 & 7.76 & 0.85 & 0.93 \\
+FS aseg+DKT volumes, raw / raw & 60 & 7.48 & 9.21 & 0.78 & 0.89 \\
+FS aseg+DKT volumes, raw / cole & 60 & 8.73 & 10.33 & 0.73 & 0.89 \\
+FS aseg+DKT volumes, raw / beheshti & 60 & 7.25 & 8.57 & 0.81 & 0.92 \\
+FS aseg+DKT volumes, raw / zhang & 60 & 5.85 & 7.70 & 0.85 & 0.93 \\
+FS + T1Prep-thickness concat / raw & 60 & 6.65 & 8.17 & 0.83 & 0.91 \\
+FS + T1Prep-thickness concat / cole & 60 & 7.38 & 8.96 & 0.80 & 0.91 \\
+FS + T1Prep-thickness concat / beheshti & 60 & 6.20 & 7.51 & 0.86 & 0.94 \\
+FS + T1Prep-thickness concat / zhang & 60 & 6.31 & 7.40 & 0.86 & 0.93 \\
+T1Prep tissue (CSF/GM/WM), TIV-norm / raw & 60 & 7.42 & 9.24 & 0.78 & 0.89 \\
+T1Prep tissue (CSF/GM/WM), TIV-norm / cole & 60 & 8.28 & 10.29 & 0.73 & 0.89 \\
+T1Prep tissue (CSF/GM/WM), TIV-norm / beheshti & 60 & 6.98 & 8.67 & 0.81 & 0.92 \\
+T1Prep tissue (CSF/GM/WM), TIV-norm / zhang & 60 & 6.58 & 8.22 & 0.83 & 0.92 \\
+T1Prep thickness (rung 4) / raw & 60 & 8.03 & 9.53 & 0.77 & 0.88 \\
+T1Prep thickness (rung 4) / cole & 60 & 8.97 & 10.57 & 0.72 & 0.88 \\
+T1Prep thickness (rung 4) / beheshti & 60 & 7.55 & 8.90 & 0.80 & 0.91 \\
+T1Prep thickness (rung 4) / zhang & 60 & 7.20 & 8.87 & 0.80 & 0.91 \\
+T1Prep thickness+area concat / raw & 60 & 10.17 & 12.21 & 0.62 & 0.81 \\
+T1Prep thickness+area concat / cole & 60 & 11.82 & 14.48 & 0.47 & 0.81 \\
+T1Prep thickness+area concat / beheshti & 60 & 9.24 & 11.31 & 0.68 & 0.87 \\
+T1Prep thickness+area concat / zhang & 60 & 9.04 & 10.89 & 0.70 & 0.87 \\
+T1Prep area alone / raw & 60 & 16.32 & 19.00 & 0.08 & 0.46 \\
+T1Prep area alone / cole & 60 & 31.60 & 38.26 & -2.72 & 0.46 \\
+T1Prep area alone / beheshti & 60 & 11.46 & 13.87 & 0.51 & 0.82 \\
+T1Prep area alone / zhang & 60 & 10.34 & 12.47 & 0.61 & 0.84 \\
+FS + T1Prep-all concat / raw & 60 & 7.57 & 9.05 & 0.79 & 0.89 \\
+FS + T1Prep-all concat / cole & 60 & 8.28 & 10.12 & 0.74 & 0.89 \\
+FS + T1Prep-all concat / beheshti & 60 & 6.77 & 8.27 & 0.83 & 0.92 \\
+FS + T1Prep-all concat / zhang & 60 & 6.80 & 8.15 & 0.83 & 0.92 \\
+BrainIAC 768-d (FM) / raw & 60 & 13.73 & 16.20 & 0.33 & 0.60 \\
+BrainIAC 768-d (FM) / cole & 60 & 21.26 & 26.13 & -0.73 & 0.60 \\
+BrainIAC 768-d (FM) / beheshti & 60 & 10.08 & 12.39 & 0.61 & 0.85 \\
+BrainIAC 768-d (FM) / zhang & 60 & 9.61 & 11.71 & 0.65 & 0.86 \\
+FS + T1Prep + BrainIAC concat / raw & 60 & 8.31 & 9.56 & 0.77 & 0.88 \\
+FS + T1Prep + BrainIAC concat / cole & 60 & 8.82 & 10.64 & 0.71 & 0.88 \\
+FS + T1Prep + BrainIAC concat / beheshti & 60 & 7.47 & 9.00 & 0.79 & 0.91 \\
+FS + T1Prep + BrainIAC concat / zhang & 60 & 7.35 & 8.87 & 0.80 & 0.91 \\
 \bottomrule
 \end{tabular}
 \end{center}
