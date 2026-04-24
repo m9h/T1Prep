@@ -1,0 +1,41 @@
+# BrainIAC preprocessing (N4 + rigid MNI + HD-BET) on arm64.
+#
+# Just the preprocessing step of BrainIAC's pipeline, suitable for feeding
+# a BrainAgeDataset with get_validation_transform(). We keep this image
+# lean because it runs 60 times across the DLBS cohort via sbatch — no
+# FreeSurfer / no antspyx / no templateflow needed.
+#
+# Python deps: SimpleITK (N4 + rigid register), HD-BET (skull-strip),
+# torch (HD-BET uses a PyTorch U-Net), nibabel (round-trip via bids names).
+FROM nvcr.io/nvidia/pytorch:26.03-py3
+
+LABEL maintainer="brainiac-preproc-arm"
+LABEL description="BrainIAC's N4 + rigid-MNI + HD-BET preprocessing, arm64 NGC PyTorch base"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN pip install --no-cache-dir --break-system-packages \
+      SimpleITK nibabel HD-BET \
+      "monai==1.3.2" pyarrow tqdm
+
+# Pre-fetch HD-BET 2.0 weights at build time (avoid N parallel downloads
+# from Zenodo when fanning out via sbatch). HD_BET.paths hardcodes
+# ~/hd-bet_params/release_2.0.0/ — we bake weights into /opt/hdbet_params
+# and symlink from each user's $HOME at runtime via the entrypoint.
+ENV HDBET_WEIGHTS=/opt/hdbet_params
+RUN python3 -c "import HD_BET.paths, HD_BET.checkpoint_download as d; \
+    import os; os.makedirs('${HDBET_WEIGHTS}', exist_ok=True); \
+    HD_BET.paths.folder_with_parameter_files = '${HDBET_WEIGHTS}/release_2.0.0'; \
+    d.folder_with_parameter_files = '${HDBET_WEIGHTS}/release_2.0.0'; \
+    os.makedirs(d.folder_with_parameter_files, exist_ok=True); \
+    d.maybe_download_parameters()" \
+ && chmod -R a+rX /opt/hdbet_params
+
+# Copy BrainIAC's preprocessing script + atlas. The atlas is small (~5 MB).
+COPY brainiac_preprocess.py /opt/brainiac_preproc/
+COPY temp_head.nii.gz /opt/brainiac_preproc/
+COPY brainiac_preproc_entry.sh /opt/brainiac_preproc/
+RUN chmod +x /opt/brainiac_preproc/brainiac_preproc_entry.sh
+
+ENTRYPOINT ["/opt/brainiac_preproc/brainiac_preproc_entry.sh"]
+CMD ["--help"]

@@ -31,10 +31,14 @@ def read_json_or_empty(name: str) -> dict:
 
 def load_all():
     return {
-        "fs":        read_parquet_or_empty('fastsurfer_features.parquet'),
-        "t1p":       read_parquet_or_empty('t1prep_features.parquet'),
-        "ridge_fs":  read_json_or_empty('ridge_fs_asegdkt.json'),
-        "ridge_t1p": read_json_or_empty('ridge_t1prep_thickness.json'),
+        "fs":             read_parquet_or_empty('fastsurfer_features.parquet'),
+        "t1p":            read_parquet_or_empty('t1prep_features.parquet'),
+        "brainiac":       read_parquet_or_empty('brainiac_embeddings.parquet'),
+        "ridge_fs":       read_json_or_empty('ridge_fs_asegdkt.json'),
+        "ridge_t1p":      read_json_or_empty('ridge_t1prep_thickness.json'),
+        "ridge_brainiac": read_json_or_empty('ridge_brainiac_embed.json'),
+        "ridge_concat":   read_json_or_empty('ridge_concat_fs_t1prep.json'),
+        "ridge_concat3":  read_json_or_empty('ridge_concat_fs_t1prep_brainiac.json'),
     }
 
 

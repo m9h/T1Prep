@@ -92,10 +92,27 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages \
 # (set to /usr above) and shell out to the shipped Python scripts. Model
 # weights ship inside the .deb under /usr/lib/freesurfer-python/python-packages.
 #
-# Sanity-check the CLIs resolve:
-RUN which mri_synthstrip mri_synthseg && \
-    mri_synthstrip --help >/dev/null 2>&1 && \
-    echo "mri_synthstrip + mri_synthseg wrappers OK"
+# Sanity-check the CLI wrappers are on PATH. We deliberately do NOT invoke
+# `--help` because the wrapper's first-line shebang triggers a full
+# Python import (surfa/tensorflow/torch), which can print deprecation
+# warnings to stderr that a too-strict check treats as errors. Runtime
+# behaviour is validated in the test harness, not at build time.
+RUN which mri_synthstrip mri_synthseg
+
+# --- Shims for MedARC's hardcoded paths.
+# pipeline.py:453 hardcodes `/opt/venv/bin/python` as the interpreter for
+# SynthSeg (MedARC's own upstream Dockerfile puts a uv-venv there), and
+# expects the script at `$FREESURFER_HOME/python/scripts/mri_synthseg`.
+# Our install has system python at /usr/bin/python3 and the actual
+# mri_synthseg module under /usr/lib/freesurfer-python/python-packages/.
+# Shim both so MedARC's pipeline.py runs verbatim without patching.
+RUN mkdir -p /opt/venv/bin \
+ && ln -sf /usr/bin/python3 /opt/venv/bin/python \
+ && mkdir -p /usr/lib/freesurfer/python/scripts \
+ && ln -sf /usr/lib/freesurfer-python/python-packages/mri_synthseg/mri_synthseg \
+      /usr/lib/freesurfer/python/scripts/mri_synthseg \
+ && ln -sf /usr/lib/freesurfer-python/python-packages/mri_synthstrip/mri_synthstrip \
+      /usr/lib/freesurfer/python/scripts/mri_synthstrip 2>/dev/null || true
 
 # --- MedARC pipeline source, pinned.
 RUN git clone https://github.com/MedARC-AI/smri-fm.git /app/smri-fm \

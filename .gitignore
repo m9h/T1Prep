@@ -6,6 +6,9 @@ ideas.txt
 todo.txt
 log*
 *.nii
+# Container build artefact: BrainIAC's skull-strip atlas. Copied into the
+# docker build context at build time; not tracked to keep the repo lean.
+comparison/containers/temp_head.nii.gz
 internal
 webui_uploads
 __pycache__

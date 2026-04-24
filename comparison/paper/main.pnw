@@ -227,6 +227,9 @@ import sys; sys.path.insert(0, r'/home/mhough/dev/T1Prep/comparison/paper')
 from paper_helpers import load_all, fmt
 d = load_all()
 ridge_fs, ridge_t1p = d['ridge_fs'], d['ridge_t1p']
+ridge_brainiac, ridge_cat, ridge_cat3 = (
+    d['ridge_brainiac'], d['ridge_concat'], d['ridge_concat3']
+)
 if not (ridge_fs or ridge_t1p):
     print(r"\emph{Ridge results not yet computed — overnight batch pending.}")
 else:
@@ -235,8 +238,14 @@ else:
     print(r"\toprule")
     print(r"Arm \& correction & n scans & MAE (yr) & RMSE & $R^2$ & Pearson $r$ \\")
     print(r"\midrule")
-    for name, results in [('FastSurfer VINN (rung 3)', ridge_fs),
-                           ('T1Prep thickness (rung 4)', ridge_t1p)]:
+    rows = [
+        ('FastSurfer VINN (rung 3)',   ridge_fs),
+        ('T1Prep thickness (rung 4)',  ridge_t1p),
+        ('BrainIAC 768-d (FM)',        ridge_brainiac),
+        ('FS+T1Prep concat',           ridge_cat),
+        ('FS+T1Prep+BrainIAC concat',  ridge_cat3),
+    ]
+    for name, results in rows:
         if not results:
             continue
         for scheme in ('raw', 'cole', 'beheshti', 'zhang'):
