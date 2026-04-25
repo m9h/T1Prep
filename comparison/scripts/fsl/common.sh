@@ -15,6 +15,20 @@ export FSLOUTPUTTYPE="${FSLOUTPUTTYPE:-NIFTI_GZ}"
 export FSLMULTIFILEQUIT="${FSLMULTIFILEQUIT:-TRUE}"
 [ -f "${FSLDIR}/etc/fslconf/fsl.sh" ] && . "${FSLDIR}/etc/fslconf/fsl.sh"
 
+# Force fsl_sub to local shell (the host config defaults to method: slurm with
+# a non-existent "short" partition, which makes FEAT/MELODIC/etc. fail with
+# "child process exited abnormally" in the inner job-submission step).
+# Override only if the user hasn't already pointed FSLSUB_CONF somewhere.
+if [ -z "${FSLSUB_CONF:-}" ]; then
+    LOCAL_FSL_SUB_CONF="${HOME}/.config/fsl/fsl_sub.yml"
+    if [ ! -f "${LOCAL_FSL_SUB_CONF}" ]; then
+        mkdir -p "$(dirname "${LOCAL_FSL_SUB_CONF}")"
+        sed 's/^method: slurm/method: shell/' \
+            "${FSLDIR}/etc/fslconf/fsl_sub.yml" > "${LOCAL_FSL_SUB_CONF}"
+    fi
+    export FSLSUB_CONF="${LOCAL_FSL_SUB_CONF}"
+fi
+
 # --- DLBS paths
 export DATASET="${DATASET:-ds004856}"
 export RAW_ROOT="${RAW_ROOT:-/data/raw/openneuro/${DATASET}}"

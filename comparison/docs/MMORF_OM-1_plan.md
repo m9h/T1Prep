@@ -60,15 +60,20 @@ compare runtime + Dice on FreeSurfer aparc as the gold standard.
 
 ## Implementation cost
 
-- **MMORF binary**: ships with FSL 6.0.7+. Already on host at `~/fsl/bin/mmorf`.
-  (Verify availability and OM-1 template path.)
+- **MMORF binary**: ships with FSL 6.0.7+. Already on host at `~/fsl/bin/mmorf`
+  (GPU + `mmorf_cpu` + `mmorf_cuda11.0` variants).
 - **arm64**: no special build; FSL conda-aarch64 includes MMORF.
-- **OM-1 template**: download from FMRIB (~500 MB), cache under
-  `~/fsl/data/standard/OM-1/`.
+- **OMM-1 template**: ✅ **acquired** (1.2 GB at
+  `/home/mhough/fsl/data/standard/oxford-mm-templates/Oxford-MM-1/`).
+  Includes T1 brain+head, T2-FLAIR brain+head, full DTI tensor (FA / MD /
+  L1-3 / V1-3 / MO / skeleton / masks), QSM, and **bidirectional warps to
+  MNI152NLIN6Asym** at `transformations/{MNI152NLIN6Asym_to_OMM-1,OMM-1_to_MNI152NLIN6Asym}_warp.nii.gz`.
+  Also `Oxford-MM-0` (the unbiased prequel) for reference.
 - **Script changes**: replace template path in MedARC pipeline.py + our
   brainiac_preprocess.py + add an MMORF wrapper. ~1 day of work.
-- **Backwards compat**: keep MNI152 outputs alongside OM-1 outputs so we
-  can ablate the template choice in the paper.
+- **Backwards compat**: keep MNI152 outputs alongside OMM-1 outputs so we
+  can ablate the template choice in the paper. Pre-computed warps make
+  cross-template comparison a single `applywarp` call per scan.
 
 ## Why this is a defensible Sophont contribution
 

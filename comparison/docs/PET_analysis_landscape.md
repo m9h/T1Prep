@@ -25,6 +25,7 @@ joint biophysical modelling against ASL/CVR (vpjax-augmented).
 
 | Tool | Strength | Use for DLBS |
 |---|---|---|
+| **`fabber_pet`** (FSL) | Bayesian variational kinetic PET (Logan, SRTM, 2-tissue compartment); shares VB engine with `fabber_asl` so identical priors style | Already on host at `~/fsl/bin/fabber_pet`. Native fit for AV45 + AV1451 binding potentials. The natural FSL-side counterpart to PETSurfer's static SUVR. |
 | **niftypet** (Markiewicz) | Differentiable Bayesian kinetic models in Python+CUDA — natural upstream of vpjax | Bridge to `vpjax.metabolism` (CMRO2-coupled SUVR). |
 | **OpenMIAKAT** | SRTM/Logan for AV1451 + AV45 reference-tissue modelling | Tau Logan-plot for waves 2/3. |
 | **AmyPET** (Markiewicz 2024) | Centiloid-aligned amyloid pipeline | Cross-cohort amyloid harmonisation if we ever join DLBS to ADNI/A4. |
@@ -43,8 +44,10 @@ joint biophysical modelling against ASL/CVR (vpjax-augmented).
 3. mri_coreg: PET → T1 (rigid, within-subject)
 4. PETPVC --pvc all → run all 7 PVC algorithms, save under -pvc-{gtm,mg,rbv,...}
 5. SUVR per FS region (cerebellum reference) → wide parquet
-6. niftypet: Bayesian Logan plot for tau (AV1451), uses ASL-derived CBF as prior
-7. (vpjax) joint amyloid+CMRO2 model (Fick's principle): SUVR_AV45 ~ f(CMRO2, age, APOE)
+6. fabber_pet: Bayesian Logan/SRTM binding-potential maps (FSL VB engine,
+   already on host) — replaces the niftypet step for FSL-native consistency
+7. niftypet (optional): same kinetic models in CUDA Python for vpjax bridge
+8. (vpjax) joint amyloid+CMRO2 model (Fick's principle): SUVR_AV45 ~ f(CMRO2, age, APOE)
 ```
 
 This gives:
