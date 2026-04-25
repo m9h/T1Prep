@@ -231,17 +231,19 @@ d = load_all()
 # Bias corrections (Cole, Beheshti, Zhang) are reported in addition to
 # raw MAE; MedARC reports raw by default.
 rows = [
-    ('FS aseg+DKT volumes, TIV-norm (rung 3)', d['ridge_fs_icv']),
-    ('FS aseg+DKT volumes, raw',               d['ridge_fs']),
-    ('SynthSeg volumes (MedARC pipeline)',     d['ridge_synthseg']),
-    ('FS + T1Prep-thickness concat',           d['ridge_concat']),
-    ('T1Prep tissue (CSF/GM/WM), TIV-norm',    d['ridge_t1p_tissue']),
-    ('T1Prep thickness (rung 4)',              d['ridge_t1p']),
-    ('T1Prep thickness+area concat',           d['ridge_t1p_thkarea']),
-    ('T1Prep area alone',                      d['ridge_t1p_area']),
-    ('FS + T1Prep-all concat',                 d['ridge_concat_all']),
-    ('BrainIAC 768-d (FM)',                    d['ridge_brainiac']),
-    ('FS + T1Prep + BrainIAC concat',          d['ridge_concat3']),
+    ('SynthSeg vols, TIV-norm (MedARC default)', d['ridge_synthseg_icv']),
+    ('SynthSeg vols, raw (MedARC pipeline)',     d['ridge_synthseg']),
+    ('FS aseg+DKT volumes, TIV-norm (rung 3)',   d['ridge_fs_icv']),
+    ('FS aseg+DKT volumes, raw',                 d['ridge_fs']),
+    ('SynthSeg + T1Prep-thickness concat',       d['ridge_concat_synthseg_t1prep']),
+    ('FS + T1Prep-thickness concat',             d['ridge_concat']),
+    ('T1Prep tissue (CSF/GM/WM), TIV-norm',      d['ridge_t1p_tissue']),
+    ('T1Prep thickness (rung 4)',                d['ridge_t1p']),
+    ('T1Prep thickness+area concat',             d['ridge_t1p_thkarea']),
+    ('T1Prep area alone',                        d['ridge_t1p_area']),
+    ('FS + T1Prep-all concat',                   d['ridge_concat_all']),
+    ('BrainIAC 768-d (FM)',                      d['ridge_brainiac']),
+    ('FS + T1Prep + BrainIAC concat',            d['ridge_concat3']),
 ]
 have_any = any(r for _, r in rows)
 if not have_any:

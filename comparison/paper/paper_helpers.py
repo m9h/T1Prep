@@ -43,6 +43,8 @@ def load_all():
         "ridge_t1p_thkarea": read_json_or_empty('ridge_t1prep_thkarea.json'),
         "ridge_brainiac":    read_json_or_empty('ridge_brainiac_embed.json'),
         "ridge_synthseg":    read_json_or_empty('ridge_synthseg.json'),
+        "ridge_synthseg_icv":read_json_or_empty('ridge_synthseg_icv.json'),
+        "ridge_concat_synthseg_t1prep": read_json_or_empty('ridge_concat_synthseg_t1prep.json'),
         "ridge_concat":      read_json_or_empty('ridge_concat_fs_t1prep.json'),
         "ridge_concat_all":  read_json_or_empty('ridge_fs_t1prep_all.json'),
         "ridge_concat3":     read_json_or_empty('ridge_concat_fs_t1prep_brainiac.json'),
