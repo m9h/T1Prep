@@ -122,7 +122,15 @@ run_one_subject_task() {
             run=$(echo "${stem}" | grep -oE 'run-[0-9]+' || echo run-1)
             events="${bold%_bold.nii.gz}_events.tsv"
             if [ "${task}" = "Words" ]; then
-                events="${RAW_ROOT}/task-Words_run-1_events.tsv"
+                # DLBS Words events live at the dataset root (study-wide
+                # stimulus onset file, not per-subject). README claims the
+                # filename ends "_run-1_events.tsv" but the actual file
+                # shipped with ds004856 is task-Words_events.tsv. Try both.
+                if [ -f "${RAW_ROOT}/task-Words_events.tsv" ]; then
+                    events="${RAW_ROOT}/task-Words_events.tsv"
+                else
+                    events="${RAW_ROOT}/task-Words_run-1_events.tsv"
+                fi
             fi
             if [ ! -f "${events}" ]; then
                 log "  no events for ${stem}, skip"
