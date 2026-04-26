@@ -1,0 +1,29 @@
+# Patch fastsurfer-full to provide a working fspython.
+#
+# Background: the FreeSurfer 7.4.1 .deb the neurodebian agent built strips
+# fspython (the standalone Python with all FS deps is huge). FastSurfer's
+# recon_surf.sh wrappers call fspython explicitly via paths like
+# $FREESURFER_HOME/bin/fspython, so they bail out with "No such file or
+# directory". This image adds:
+#   1. A fspython shim that just calls /usr/bin/python3
+#   2. surfa + nibabel + numpy + scipy installed for that python
+# Same approach we used for medarc-smri-fm.
+FROM ghcr.io/m9h/fastsurfer-full:7.4.1-6b6b985.1
+
+LABEL maintainer="fastsurfer-full-fspython"
+LABEL description="fastsurfer-full + fspython shim + system-python FS deps"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 1. fspython shim — exec system python3 with whatever args were passed.
+#    The downstream rca-config script + other FS Python wrappers only need
+#    a Python interpreter with surfa/nibabel; they don't need FreeSurfer's
+#    bundled venv.
+RUN printf '#!/bin/bash\nexec /usr/bin/python3 "$@"\n' \
+        > /usr/lib/freesurfer-7.4.1/bin/fspython \
+ && chmod +x /usr/lib/freesurfer-7.4.1/bin/fspython
+
+# 2. Install the python deps FS scripts import. Pin to versions that match
+#    medarc-smri-fm so the two images stay behaviourally consistent.
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+        surfa nibabel "numpy<2" scipy

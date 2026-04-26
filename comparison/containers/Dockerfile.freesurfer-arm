@@ -1,0 +1,78 @@
+# freesurfer-arm — standalone FreeSurfer 8.2.0 base for arm64.
+#
+# The shared FS layer that medarc-smri-fm and the new petsurfer-arm both
+# depend on. Replaces the previous pattern where each consumer image
+# bundled its own copy of the same .debs.
+#
+# Provides:
+#   - FreeSurfer 8.2.0 binaries (mri_*, mris_*, gtmseg, mri_gtmpvc, etc.)
+#   - libinsighttoolkit5 5.4.5 (linked by FS binaries; Noble's stock 5.3 fails)
+#   - freesurfer-data 8.2.0 atlases (~6.5 GB)
+#   - freesurfer-python (mri_synthstrip, mri_synthseg, mri_easyreg, mri_synthsr,
+#                        mri_WMHsynthseg)
+#   - fspython shim → /usr/bin/python3 (the .deb strips the bundled venv)
+#   - surfa + nibabel + numpy<2 + scipy in system Python so the FS Python
+#     wrappers (rca-config etc.) work
+#
+# NGC PyTorch base — same as our other arm64 images; provides CUDA + python3.12.
+FROM nvcr.io/nvidia/pytorch:26.03-py3
+
+LABEL maintainer="freesurfer-arm-base"
+LABEL description="FreeSurfer 8.2.0 + python wrappers, arm64 NGC PyTorch base"
+LABEL org.opencontainers.image.architecture="arm64"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# tcsh required by some FS scripts; ca-certificates for any download steps;
+# bc + perl for FS shell scripts
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      tcsh ca-certificates wget bc perl \
+      python3-pip \
+ && rm -rf /var/lib/apt/lists/*
+
+# Local arm64 .debs (extracted from the medarc-smri-fm image via dpkg-repack
+# 2026-04-26 — the canonical neurodebian-built 8.2.0-3 binaries).
+COPY libinsighttoolkit5_5.4.5-1_arm64.deb /build/
+COPY freesurfer_8.2.0-3_arm64.deb /build/
+COPY freesurfer-data_8.2.0-1_all.deb /build/
+COPY freesurfer-python_8.2.0-1_all.deb /build/
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      /build/libinsighttoolkit5_5.4.5-1_arm64.deb \
+      /build/freesurfer_8.2.0-3_arm64.deb \
+      /build/freesurfer-data_8.2.0-1_all.deb \
+      /build/freesurfer-python_8.2.0-1_all.deb \
+ && rm -rf /build /var/lib/apt/lists/* \
+ && if ! ldd /usr/lib/freesurfer/bin/mri_convert | grep -qE 'libitk[a-z0-9_]+-5\.4\.so'; then \
+        echo "FATAL: mri_convert not linking ITK 5.4 — wrong ITK resolved"; \
+        ldd /usr/lib/freesurfer/bin/mri_convert | grep -iE 'itk|vnl' | head -10; \
+        exit 1; \
+    fi
+
+ENV FREESURFER_HOME=/usr/lib/freesurfer
+ENV FSENV=/usr
+ENV PATH="${FREESURFER_HOME}/bin:/usr/lib/freesurfer-python/bin:${PATH}"
+
+# fspython shim — the .deb strips fspython (bundled venv was huge). FS's
+# python-side scripts (rca-config, mri_synthseg's rca-config, etc.) just
+# need a Python interpreter with surfa + nibabel; the system python3 with
+# pip-installed deps is fine. Same workaround used in medarc-smri-fm.
+RUN printf '#!/bin/bash\nexec /usr/bin/python3 "$@"\n' > ${FREESURFER_HOME}/bin/fspython \
+ && chmod +x ${FREESURFER_HOME}/bin/fspython
+
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+        surfa nibabel "numpy<2" scipy
+
+# Runtime users must mount their FreeSurfer license:
+#   -v ~/license.txt:/usr/lib/freesurfer/license.txt:ro
+
+# Sanity: the things downstream consumers expect to call
+RUN for tool in mri_convert mri_synthseg mri_synthstrip gtmseg mri_gtmpvc; do \
+        if ! command -v "$tool" >/dev/null 2>&1; then \
+            echo "WARN: $tool not on PATH (FS 8.2.0 may have renamed it)"; \
+        else \
+            echo "OK: $(command -v $tool)"; \
+        fi; \
+    done \
+ && fspython -c "import surfa, nibabel; print('surfa', surfa.__version__, 'nibabel', nibabel.__version__)"

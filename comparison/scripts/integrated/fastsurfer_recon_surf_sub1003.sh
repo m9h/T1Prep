@@ -21,7 +21,7 @@ SUBJECT="${SUBJECT:-sub-1003}"
 DATASET="${DATASET:-ds004856}"
 RAW_ROOT="/data/raw/openneuro/${DATASET}"
 FS_ROOT="/data/datasets/smri-fm-cmp/fastsurfer/${DATASET}"
-IMG="ghcr.io/m9h/fastsurfer-full:7.4.1-6b6b985.1"
+IMG="${IMG:-fastsurfer-full-fspython:1.0}"
 
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
 

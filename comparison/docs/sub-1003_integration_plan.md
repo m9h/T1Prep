@@ -22,7 +22,7 @@ Longitudinal trajectory: ages 54 → 58 → 63 yr.
 │   │   ├── brainiac_preproc.nii.gz            # already done
 │   │   ├── fsl_anat/                          # NEW: FSL fsl_anat one-shot
 │   │   ├── mmorf_om1/                         # NEW: MMORF → OM-1 warp
-│   │   └── sienax/                            # NEW: brain volume + atrophy
+│   │   # (SIENAX/SIENA dropped 2026-04-26 — longitudinal atrophy via FS recon_surf longitudinal stream)
 │   ├── dwi/
 │   │   ├── eddy/                              # NEW: topup + eddy (replaces eddy_correct)
 │   │   ├── dtifit/                            # already done (re-run on eddy output)
@@ -73,8 +73,8 @@ Longitudinal trajectory: ages 54 → 58 → 63 yr.
 | | T1Prep | ✅ done | thickness/area/tissue parquets |
 | | SynthSeg via MedARC pipeline.py | ✅ done | 60-row volumes parquet |
 | | BrainIAC | ✅ done | 768-d embeddings parquet |
-| **T1 morph (FSL)** | `fsl_anat` | ❌ todo | BET + FAST + FIRST + FNIRT one-shot; FSL-native baseline |
-| | **SIENAX** + **SIENA** | ❌ todo | per-wave brain vol + longitudinal atrophy |
+| **T1 morph (FSL)** | `fsl_anat` | ✅ done sub-1003 | BET + FAST + FIRST + FNIRT one-shot; FSL-native baseline |
+| | ~~SIENAX + SIENA~~ | DROPPED (per discussion 2026-04-26) | longitudinal atrophy now covered by FastSurfer recon_surf longitudinal stream |
 | **Multimodal warp** | **MMORF → OM-1** | ❌ todo | replaces ANTs SyN; multimodal cost (T1 + T2 + FA) |
 | **Diffusion** | `eddy` + `topup` (NO topup data: PE single-direction → use `eddy --data_is_shelled`) | ❌ todo | replaces our current `eddy_correct` |
 | | DTIFit (re-run on `eddy` output) | ⚠️ partial | currently from `eddy_correct` → re-run |
@@ -170,7 +170,7 @@ cognition/surveys/demographics XLSX → pandas → cognition parquet
    h. `bedpostx_xtract_sub1003.sh`
    i. `tbss_sub1003.sh`
    j. `fix_sub1003.sh`          (needs trained classifier — fetch first)
-   k. `sienax_siena_sub1003.sh`
+   k. ~~SIENAX/SIENA — dropped 2026-04-26~~ (atrophy via FastSurfer longitudinal stream)
 5. Per-tool feature extractor: `extract_<modality>_features.py` → parquet.
 6. `joint_features_sub1003.py` → merge all into `joint.parquet`.
 7. **Checkpoint**: review tree + parquets together before any scale-out.

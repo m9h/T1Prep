@@ -6,9 +6,11 @@ ideas.txt
 todo.txt
 log*
 *.nii
-# Container build artefact: BrainIAC's skull-strip atlas. Copied into the
-# docker build context at build time; not tracked to keep the repo lean.
+# Container build artefacts: large binaries / datasets copied into the
+# docker build context at build time. Not tracked — the neurodebian agent
+# builds the .debs out-of-tree and we extract on demand.
 comparison/containers/temp_head.nii.gz
+comparison/containers/*.deb
 internal
 webui_uploads
 __pycache__
