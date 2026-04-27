@@ -1,0 +1,51 @@
+# fastsurfer-full + rev-2 fixes (atlas data + fspython shim).
+#
+# Layers on top of the already-built fastsurfer-full image (FastSurfer
+# source baked in at /opt/FastSurfer + libitk5 + python deps), then:
+#   1. Purges old freesurfer-7.4.1 (rev-1, missing atlas data)
+#   2. Installs freesurfer-7.4.1_7.4.1-2 (rev-2 postinst symlinks
+#      /usr/lib/freesurfer-7.4.1/{average,models,subjects} → /usr/lib/freesurfer/...)
+#   3. Installs freesurfer-data (8.2.0 atlas data — the symlink target)
+#   4. Installs freesurfer-python (mri_synthstrip / mri_synthseg etc.)
+#   5. Adds the fspython shim + pip-installed surfa/nibabel/scipy so
+#      FreeSurfer's Python wrapper scripts (rca-config etc.) work
+#
+# Result: FastSurfer recon_surf can resolve the ~/average atlas
+# (RB_all_2020-01-02.gca) it needs, plus all the FS Python wrappers
+# stop barfing on missing fspython.
+FROM fastsurfer-full:7.4.1-6b6b985.1
+
+LABEL maintainer="fastsurfer-full-rev2"
+LABEL description="fastsurfer-full + FS 7.4.1 rev-2 (atlas data) + fspython shim"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Stage in the new .debs
+COPY libinsighttoolkit5_5.4.5-1_arm64.deb /build/
+COPY freesurfer-7.4.1_7.4.1-2_arm64.deb /build/
+COPY freesurfer-data_8.2.0-1_all.deb /build/
+COPY freesurfer-python_8.2.0-1_all.deb /build/
+
+RUN apt-get update \
+ && apt-get purge -y freesurfer-7.4.1 || true \
+ && apt-get install -y --no-install-recommends \
+      /build/freesurfer-data_8.2.0-1_all.deb \
+      /build/freesurfer-python_8.2.0-1_all.deb \
+      /build/freesurfer-7.4.1_7.4.1-2_arm64.deb \
+ && rm -rf /build /var/lib/apt/lists/* \
+ && ls -la /usr/lib/freesurfer-7.4.1/average/RB_all_2020-01-02.gca
+
+# fspython shim — same workaround applied in freesurfer-arm:8.2.1
+RUN printf '#!/bin/bash\nexec /usr/bin/python3 "$@"\n' \
+        > /usr/lib/freesurfer-7.4.1/bin/fspython \
+ && chmod +x /usr/lib/freesurfer-7.4.1/bin/fspython
+
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
+        surfa nibabel "numpy<2" scipy
+
+# License must be mounted at runtime:
+#   -v ~/license.txt:/opt/FastSurfer/license.txt:ro
+
+RUN /usr/lib/freesurfer-7.4.1/bin/fspython -c "import surfa, nibabel; print('surfa', surfa.__version__, 'nibabel', nibabel.__version__)" \
+ && which mri_robust_register mri_robust_template gtmseg mri_gtmpvc 2>&1 \
+ && echo "fastsurfer-full-rev2 OK"

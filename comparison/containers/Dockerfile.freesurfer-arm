@@ -34,13 +34,17 @@ RUN apt-get update \
 # Local arm64 .debs (extracted from the medarc-smri-fm image via dpkg-repack
 # 2026-04-26 — the canonical neurodebian-built 8.2.0-3 binaries).
 COPY libinsighttoolkit5_5.4.5-1_arm64.deb /build/
-COPY freesurfer_8.2.0-3_arm64.deb /build/
+COPY freesurfer_8.2.0-5_arm64.deb /build/
 COPY freesurfer-data_8.2.0-1_all.deb /build/
 COPY freesurfer-python_8.2.0-1_all.deb /build/
+# Rev -4 (vs the previously-broken -3) adds 7 binaries:
+# mri_robust_register, mri_robust_template, mri_gtmpvc, mri_gtmseg,
+# lta_diff, mri_create_tests, mri_gradient_info — unblocks recon-all,
+# recon-all -base/-long, and PETSurfer (gtmseg → mri_gtmpvc → gtmstats2table).
 RUN apt-get update \
- && apt-get install -y --no-install-recommends \
+ && apt-get install -y --no-install-recommends -o Dpkg::Options::="--force-overwrite" \
       /build/libinsighttoolkit5_5.4.5-1_arm64.deb \
-      /build/freesurfer_8.2.0-3_arm64.deb \
+      /build/freesurfer_8.2.0-5_arm64.deb \
       /build/freesurfer-data_8.2.0-1_all.deb \
       /build/freesurfer-python_8.2.0-1_all.deb \
  && rm -rf /build /var/lib/apt/lists/* \
@@ -58,21 +62,52 @@ ENV PATH="${FREESURFER_HOME}/bin:/usr/lib/freesurfer-python/bin:${PATH}"
 # python-side scripts (rca-config, mri_synthseg's rca-config, etc.) just
 # need a Python interpreter with surfa + nibabel; the system python3 with
 # pip-installed deps is fine. Same workaround used in medarc-smri-fm.
-RUN printf '#!/bin/bash\nexec /usr/bin/python3 "$@"\n' > ${FREESURFER_HOME}/bin/fspython \
+#
+# Also set PYTHONPATH so freesurfer's bundled python packages resolve —
+# notably `synthmorph` (under .../python/packages/) which mri_synthmorph
+# imports. Without this, fs-synthmorph-reg's mri_synthmorph step bails on
+# `ModuleNotFoundError: No module named 'synthmorph'`.
+ENV PYTHONPATH=/usr/lib/freesurfer/python/packages:/usr/lib/freesurfer-python/python-packages
+RUN printf '#!/bin/bash\nexport PYTHONPATH="/usr/lib/freesurfer/python/packages:/usr/lib/freesurfer-python/python-packages:${PYTHONPATH}"\nexec /usr/bin/python3 "$@"\n' > ${FREESURFER_HOME}/bin/fspython \
  && chmod +x ${FREESURFER_HOME}/bin/fspython
 
 RUN python3 -m pip install --no-cache-dir --break-system-packages \
-        surfa nibabel "numpy<2" scipy
+        surfa nibabel "numpy<2" scipy \
+        tensorflow tf-keras \
+        voxelmorph neurite
+
+# voxelmorph 0.2 uses inspect.getargspec which was removed in Python 3.11.
+# Append a shim to Ubuntu's pre-existing /usr/lib/python3.12/sitecustomize.py
+# (it's the apport exception handler hook, takes precedence over
+# dist-packages copies, but safe to extend).
+RUN cat >> /usr/lib/python3.12/sitecustomize.py <<'EOF'
+
+# inspect.getargspec compat shim for voxelmorph 0.2 on Python 3.12.
+import inspect as _inspect
+if not hasattr(_inspect, "getargspec"):
+    from collections import namedtuple as _nt
+    _ArgSpec = _nt("ArgSpec", "args varargs keywords defaults")
+    def _getargspec(func):
+        s = _inspect.getfullargspec(func)
+        return _ArgSpec(args=s.args, varargs=s.varargs, keywords=s.varkw, defaults=s.defaults)
+    _inspect.getargspec = _getargspec
+EOF
+
+# mri_synthseg uses `import tensorflow as tf` (and the inside of it loads
+# Keras). On Keras 3 the BatchNormalization API changed; `TF_USE_LEGACY_KERAS=1`
+# routes `import keras` → tf_keras (Keras 2) which mri_synthseg expects.
+ENV TF_USE_LEGACY_KERAS=1
 
 # Runtime users must mount their FreeSurfer license:
 #   -v ~/license.txt:/usr/lib/freesurfer/license.txt:ro
 
 # Sanity: the things downstream consumers expect to call
-RUN for tool in mri_convert mri_synthseg mri_synthstrip gtmseg mri_gtmpvc; do \
+RUN for tool in mri_convert mri_synthseg mri_synthstrip mri_synthmorph mri_robust_register mri_robust_template fs-synthmorph-reg gtmseg mri_gtmpvc mri_segstats mri_label2vol aseg2feat; do \
         if ! command -v "$tool" >/dev/null 2>&1; then \
-            echo "WARN: $tool not on PATH (FS 8.2.0 may have renamed it)"; \
+            echo "WARN: $tool not on PATH"; \
         else \
             echo "OK: $(command -v $tool)"; \
         fi; \
     done \
- && fspython -c "import surfa, nibabel; print('surfa', surfa.__version__, 'nibabel', nibabel.__version__)"
+ && fspython -c "import surfa, nibabel; print('surfa', surfa.__version__, 'nibabel', nibabel.__version__)" \
+ && ls /usr/lib/freesurfer/bin/gtmstats2table

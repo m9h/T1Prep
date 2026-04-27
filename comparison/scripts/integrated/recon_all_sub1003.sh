@@ -57,7 +57,7 @@ run_one() {
       -e SUBJECTS_DIR=/subjects \
       -e FS_LICENSE=/usr/lib/freesurfer/license.txt \
       --entrypoint bash \
-      "${IMG}" -c "source /usr/lib/freesurfer/SetUpFreeSurfer.sh && recon-all -i /data/${t1_base} -s ${sid} -all -openmp 4 -3T" \
+      "${IMG}" -c "source /usr/lib/freesurfer/SetUpFreeSurfer.sh && recon-all -i /data/${t1_base} -s ${sid} -all -openmp ${OPENMP:-16} -threads ${OPENMP:-16} -3T" \
       > "${logfile}" 2>&1
     local rc=$?
     if [ $rc -eq 0 ]; then
