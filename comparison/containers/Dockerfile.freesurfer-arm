@@ -36,7 +36,7 @@ RUN apt-get update \
 COPY libinsighttoolkit5_5.4.5-1_arm64.deb /build/
 COPY freesurfer_8.2.0-5_arm64.deb /build/
 COPY freesurfer-data_8.2.0-1_all.deb /build/
-COPY freesurfer-python_8.2.0-1_all.deb /build/
+COPY freesurfer-python_8.2.0-2_all.deb /build/
 # Rev -4 (vs the previously-broken -3) adds 7 binaries:
 # mri_robust_register, mri_robust_template, mri_gtmpvc, mri_gtmseg,
 # lta_diff, mri_create_tests, mri_gradient_info — unblocks recon-all,
@@ -46,7 +46,7 @@ RUN apt-get update \
       /build/libinsighttoolkit5_5.4.5-1_arm64.deb \
       /build/freesurfer_8.2.0-5_arm64.deb \
       /build/freesurfer-data_8.2.0-1_all.deb \
-      /build/freesurfer-python_8.2.0-1_all.deb \
+      /build/freesurfer-python_8.2.0-2_all.deb \
  && rm -rf /build /var/lib/apt/lists/* \
  && if ! ldd /usr/lib/freesurfer/bin/mri_convert | grep -qE 'libitk[a-z0-9_]+-5\.4\.so'; then \
         echo "FATAL: mri_convert not linking ITK 5.4 — wrong ITK resolved"; \
@@ -73,23 +73,15 @@ RUN printf '#!/bin/bash\nexport PYTHONPATH="/usr/lib/freesurfer/python/packages:
 
 RUN python3 -m pip install --no-cache-dir --break-system-packages \
         surfa nibabel "numpy<2" scipy \
-        tensorflow tf-keras \
-        neurite scikit-image pystrum
+        tensorflow tf-keras
 
-# voxelmorph from git HEAD — pip's 0.2 release is years out of date.
-# Master refactored the package layout (tf/torch backends → consolidated
-# nn/functional). compose + spatial_transform are now top-level (vxm.compose,
-# vxm.spatial_transform) but the freesurfer-bundled synthmorph still imports
-# the old vxm.utils.{compose,transform} paths.
-RUN python3 -m pip install --no-cache-dir --break-system-packages --no-deps \
-        git+https://github.com/voxelmorph/voxelmorph.git
-
-# Patch the freesurfer-bundled synthmorph package to use current vxm API.
-RUN sed -i \
-      -e 's|vxm\.utils\.compose|vxm.compose|g' \
-      -e 's|vxm\.utils\.transform|vxm.spatial_transform|g' \
-      /usr/lib/freesurfer/python/packages/synthmorph/registration.py \
- && grep -n 'vxm\.' /usr/lib/freesurfer/python/packages/synthmorph/registration.py | head
+# freesurfer-python_8.2.0-2 ships pinned voxelmorph + neurite tarballs
+# under /usr/lib/freesurfer-python/vendor/ and a `fs-setup-python-env`
+# wrapper that creates /var/lib/freesurfer/fsenv with the pinned wheels.
+# Run it once at build time so mri_synthmorph + fs-synthmorph-reg work
+# against the API FreeSurfer 8.2.0 was tested against (and not whatever
+# pip ships, which has drifted).
+RUN fs-setup-python-env 2>&1 | tail -5
 
 # voxelmorph 0.2 uses inspect.getargspec which was removed in Python 3.11.
 # Append a shim to Ubuntu's pre-existing /usr/lib/python3.12/sitecustomize.py
