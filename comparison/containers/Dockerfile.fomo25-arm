@@ -1,0 +1,90 @@
+# FOMO25 baseline-SSL (AMAES_resenc_b) embedding extractor — Grace Blackwell arm64.
+#
+# Pivot from upstream jbanusco/fomo25 mmunetvae (no public .ckpt at v1.0.0)
+# to the actually-published FOMO25 baseline: FOMO-MRI/AMAES_resenc_b on
+# HuggingFace (paper arxiv 2408.00640, ResEnc-UNet-B, FOMO300K masked AE
+# pretraining, 102M params). Model class lives in the asparagus +
+# gardening_tools repos.
+#
+# Optimised for DGX Spark GB10 (Grace ARM CPU + Blackwell GPU): NGC's
+# pytorch:26.03-py3 arm64 is the only PyTorch with sm_120 support, so
+# we install asparagus / gardening_tools with --no-deps to avoid the
+# upstream torch<2.3 cap downgrading our Blackwell-tuned wheel.
+#
+# Used by:
+#   smri-fm/experiments/dlbs_morphometry_benchmark/scripts/extract_fomo25_embeddings.py
+
+FROM nvcr.io/nvidia/pytorch:26.03-py3
+
+LABEL maintainer="smri-fm-arm"
+LABEL description="FOMO25 AMAES_resenc_b feature extractor, Grace Blackwell arm64"
+LABEL org.opencontainers.image.architecture="arm64"
+LABEL org.opencontainers.image.source="https://github.com/m9h/T1Prep"
+LABEL org.opencontainers.image.title="fomo25-arm"
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git \
+ && rm -rf /var/lib/apt/lists/*
+
+# gardening_tools provides the model classes (ResidualEncoderUNet, etc.);
+# asparagus is the higher-level training/finetune framework. We only
+# need their model definitions, not the training loops, so --no-deps
+# keeps NGC's torch + numpy stack intact.
+RUN pip install --no-cache-dir --no-deps \
+        git+https://github.com/Sllambias/gardening_tools.git \
+        git+https://github.com/Sllambias/asparagus.git
+
+# Runtime deps for our extractor and HF checkpoint download. einops +
+# tqdm + nibabel + huggingface_hub are not in the NGC base.
+RUN pip install --no-cache-dir \
+        einops nibabel huggingface_hub pyarrow
+
+# Pre-fetch the AMAES_resenc_b checkpoint so the image is self-contained
+# (1.17 GB; image grows from ~13 GB → ~14 GB). Cached so runtime starts
+# go straight to extraction without a network round-trip.
+RUN python -c "
+from huggingface_hub import hf_hub_download
+p = hf_hub_download(
+    repo_id='FOMO-MRI/AMAES_resenc_b',
+    filename='resenc_unet_b.ckpt',
+    cache_dir='/opt/checkpoints',
+)
+print('cached:', p)
+"
+
+# Sanity: model class imports and a forward pass on a synthetic 96^3
+# volume completes (Blackwell or CPU). Catches dep gaps at build time
+# rather than at runtime extraction.
+RUN python -c "
+import torch
+print('torch:', torch.__version__, 'cuda available:', torch.cuda.is_available())
+
+from asparagus.modules.networks.resenc_unet import resenc_unet_b
+m = resenc_unet_b(dimensions='3D', input_channels=1, output_channels=1)
+m.eval()
+x = torch.randn(1, 1, 96, 96, 96)
+with torch.no_grad():
+    if hasattr(m, 'forward_with_features'):
+        out, feats = m.forward_with_features(x)
+        print('forward_with_features OK; out:', out.shape,
+              'features:', [f.shape for f in feats] if isinstance(feats, list) else feats.shape)
+    else:
+        out = m(x)
+        print('forward OK; out:', out.shape)
+"
+
+WORKDIR /work
+
+# Runtime contract: the host mounts the extractor script + input dir +
+# output dir, and invokes:
+#   python /work/extract.py --input_csv ... --root_dir ... --out_dir ...
+#
+# Checkpoint is at /opt/checkpoints/.../resenc_unet_b.ckpt (the path
+# printed during the pre-fetch step). Use huggingface_hub to resolve
+# it inside the extractor:
+#   from huggingface_hub import hf_hub_download
+#   ckpt_path = hf_hub_download(repo_id='FOMO-MRI/AMAES_resenc_b',
+#                                filename='resenc_unet_b.ckpt',
+#                                cache_dir='/opt/checkpoints')
