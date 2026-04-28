@@ -76,12 +76,20 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages \
         tensorflow tf-keras \
         neurite scikit-image pystrum
 
-# voxelmorph from git HEAD specifically — pip's 0.2 release is years out
-# of date and missing the `vxm.utils.compose` API that the freesurfer-bundled
-# synthmorph imports. Git master exposes vxm.utils.{compose,transform} via
-# the tf-backend submodule.
+# voxelmorph from git HEAD — pip's 0.2 release is years out of date.
+# Master refactored the package layout (tf/torch backends → consolidated
+# nn/functional). compose + spatial_transform are now top-level (vxm.compose,
+# vxm.spatial_transform) but the freesurfer-bundled synthmorph still imports
+# the old vxm.utils.{compose,transform} paths.
 RUN python3 -m pip install --no-cache-dir --break-system-packages --no-deps \
         git+https://github.com/voxelmorph/voxelmorph.git
+
+# Patch the freesurfer-bundled synthmorph package to use current vxm API.
+RUN sed -i \
+      -e 's|vxm\.utils\.compose|vxm.compose|g' \
+      -e 's|vxm\.utils\.transform|vxm.spatial_transform|g' \
+      /usr/lib/freesurfer/python/packages/synthmorph/registration.py \
+ && grep -n 'vxm\.' /usr/lib/freesurfer/python/packages/synthmorph/registration.py | head
 
 # voxelmorph 0.2 uses inspect.getargspec which was removed in Python 3.11.
 # Append a shim to Ubuntu's pre-existing /usr/lib/python3.12/sitecustomize.py
