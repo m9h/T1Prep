@@ -13,7 +13,8 @@ GHCR_TAG="${GHCR_TAG:-ghcr.io/m9h/fomo25-arm:latest}"
 
 cd "${CTX}"
 
-docker build \
+# BuildKit needed for heredoc syntax in the Dockerfile RUN steps.
+DOCKER_BUILDKIT=1 docker build \
     -f Dockerfile.fomo25-arm \
     -t "${TAG}" \
     -t "${GHCR_TAG}" \

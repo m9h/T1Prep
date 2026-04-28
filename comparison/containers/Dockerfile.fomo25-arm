@@ -44,7 +44,7 @@ RUN pip install --no-cache-dir \
 # Pre-fetch the AMAES_resenc_b checkpoint so the image is self-contained
 # (1.17 GB; image grows from ~13 GB → ~14 GB). Cached so runtime starts
 # go straight to extraction without a network round-trip.
-RUN python -c "
+RUN python <<'PYEOF'
 from huggingface_hub import hf_hub_download
 p = hf_hub_download(
     repo_id='FOMO-MRI/AMAES_resenc_b',
@@ -52,12 +52,12 @@ p = hf_hub_download(
     cache_dir='/opt/checkpoints',
 )
 print('cached:', p)
-"
+PYEOF
 
 # Sanity: model class imports and a forward pass on a synthetic 96^3
 # volume completes (Blackwell or CPU). Catches dep gaps at build time
 # rather than at runtime extraction.
-RUN python -c "
+RUN python <<'PYEOF'
 import torch
 print('torch:', torch.__version__, 'cuda available:', torch.cuda.is_available())
 
@@ -73,7 +73,7 @@ with torch.no_grad():
     else:
         out = m(x)
         print('forward OK; out:', out.shape)
-"
+PYEOF
 
 WORKDIR /work
 
