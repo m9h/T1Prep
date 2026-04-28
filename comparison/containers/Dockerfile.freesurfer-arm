@@ -74,7 +74,14 @@ RUN printf '#!/bin/bash\nexport PYTHONPATH="/usr/lib/freesurfer/python/packages:
 RUN python3 -m pip install --no-cache-dir --break-system-packages \
         surfa nibabel "numpy<2" scipy \
         tensorflow tf-keras \
-        voxelmorph neurite
+        neurite scikit-image pystrum
+
+# voxelmorph from git HEAD specifically — pip's 0.2 release is years out
+# of date and missing the `vxm.utils.compose` API that the freesurfer-bundled
+# synthmorph imports. Git master exposes vxm.utils.{compose,transform} via
+# the tf-backend submodule.
+RUN python3 -m pip install --no-cache-dir --break-system-packages --no-deps \
+        git+https://github.com/voxelmorph/voxelmorph.git
 
 # voxelmorph 0.2 uses inspect.getargspec which was removed in Python 3.11.
 # Append a shim to Ubuntu's pre-existing /usr/lib/python3.12/sitecustomize.py
