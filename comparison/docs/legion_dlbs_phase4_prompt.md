@@ -120,10 +120,23 @@ Output: `${FS}/sub-1003_ses-waveN/mri/nextbrain_seg.mgz` + label LUT.
 
 ## Phase 4b — recon-all + base + long for remaining 22 subjects
 
-Same shape as the sub-1003 pipeline you already ran. For each of:
+Same shape as the sub-1003 pipeline you already ran. **sub-1007 is
+the priority next subject** — confirmed by the user 2026-04-28; do
+this one first and signal completion before continuing through the
+remaining 21. Spark side will fire the post-surface cascade
+(`petsurfer_sub1007.sh`, `segment_subregions_sub1007.sh`) the moment
+sub-1007's `surf/lh.pial` + `rh.pial` + base + long markers land.
+
+Modality context for sub-1007 (drives downstream cascade priority):
+- amyloid AV45 PET × 3 sessions, tau AV1451 PET × W3 — full PETSurfer fan-out
+- ASL × W1 + W3 (perf/) — independent vpjax pipeline
+- DWI × 3 — independent FSL pipeline (Spark-side, already partial)
+
+Subject queue (process top-down, signal each completion to NFS):
 
 ```
-sub-1007 sub-1013 sub-1022 sub-1023 sub-103 sub-1031 sub-1045 sub-1054
+sub-1007  ← priority first
+sub-1013 sub-1022 sub-1023 sub-103 sub-1031 sub-1045 sub-1054
 sub-1058 sub-1084 sub-1093 sub-1139 sub-1141 sub-1146 sub-1149 sub-1153
 sub-1157 sub-1172 sub-1175 sub-1183 sub-1200 sub-1220
 ```
