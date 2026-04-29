@@ -118,6 +118,30 @@ Output: `${FS}/sub-1003_ses-waveN/mri/nextbrain_seg.mgz` + label LUT.
 
 ---
 
+## Phase 4a-bis — sub-1007 post-surface cascade NOW (interrupt-priority)
+
+> **Update 2026-04-29 09:30**: sub-1007's cross + base + long landed
+> overnight (07:09:47 marker). User has confirmed sub-1007 is the
+> priority subject; before continuing through the rest of the 22
+> in §4b, please fire the post-surface cascade for sub-1007.
+> sub-1013 is currently mid-cross — finish that subject in the
+> background, but the next-in-queue ordering becomes:
+>
+> 1. **sub-1007 cascade** (segment_subregions × 3 ses × 3 structures
+>    + PETSurfer × 4 PET scans). One-line invocation:
+>    ```bash
+>    bash /data/mhough/dev/comparison/scripts/integrated/cascade_subject.sh sub-1007
+>    ```
+>    Drops `${FS}/_logs/CASCADE_sub-1007_DONE` when complete; Spark
+>    side polls for it and fires the integrated-tree wire-up + ridge
+>    feature extraction.
+> 2. Continue 4b with sub-1013, sub-1022, ... in subject-ID order.
+> 3. After every cohort subject's recon-all completes, run
+>    `cascade_subject.sh sub-XXXX` for that subject (same one-liner).
+>    No batched end-of-phase 4a-2 — make it per-subject so the Spark
+>    side can start consuming PETSurfer / segment_subregions outputs
+>    incrementally.
+
 ## Phase 4b — recon-all + base + long for remaining 22 subjects
 
 Same shape as the sub-1003 pipeline you already ran. **sub-1007 is
